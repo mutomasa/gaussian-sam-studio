@@ -8,6 +8,8 @@ dependencies = [
     "imageio>=2.34",
     "imageio-ffmpeg>=0.5",
     "numpy>=1.26,<2",
+    # 26 以降は実行時に NumPy 2 が必要（未宣言）だが、sam3 が numpy<2 を要求するため #21
+    "pyarrow<26",
     "opencv-python-headless>=4.9",
     "pandas>=2.2",
     "pyyaml>=6.0",

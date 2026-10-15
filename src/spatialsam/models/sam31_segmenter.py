@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 
+from spatialsam.models.sam3_compat import patch_init_state_kwargs
 from spatialsam.models.types import FrameMasks, SegmentationRequest, SegmentationResult
 
 
@@ -20,17 +21,28 @@ class Sam31Settings:
     max_num_objects: int = 16
     use_fa3: bool = False  # FlashAttention 3 は Hopper 専用。Ampere 等では False
     score_threshold: float = 0.5
+    # 何フレームまとめて画像エンコーダ・後処理に通すか。公式ビルダーは 16 固定（H100 前提）
+    grounding_batch_size: int = 1
+    postprocess_batch_size: int = 1
+
+
+def apply_memory_settings(predictor: Any, settings: Sam31Settings) -> Any:
+    """ビルダー引数で変えられないバッチサイズを、構築後に上書きする（8GB VRAM 向け）。"""
+    predictor.model.batched_grounding_batch_size = settings.grounding_batch_size
+    predictor.model.postprocess_batch_size = settings.postprocess_batch_size
+    return predictor
 
 
 def build_sam31_predictor(settings: Sam31Settings) -> Any:
     from sam3.model_builder import build_sam3_multiplex_video_predictor
 
-    return build_sam3_multiplex_video_predictor(
+    predictor = build_sam3_multiplex_video_predictor(
         checkpoint_path=settings.checkpoint_path,
         max_num_objects=settings.max_num_objects,
         use_fa3=settings.use_fa3,
         default_output_prob_thresh=settings.score_threshold,
     )
+    return apply_memory_settings(patch_init_state_kwargs(predictor), settings)
 
 
 def _to_numpy(value: Any) -> np.ndarray:

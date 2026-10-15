@@ -132,3 +132,14 @@ def test_gpu_status_and_measure_without_cuda():
     with measure(NoCudaTorch) as measurement:
         pass
     assert measurement.peak_vram_mib is None and measurement.elapsed_sec >= 0
+
+
+def test_apply_memory_settings_overrides_batch_sizes():
+    from types import SimpleNamespace
+
+    from spatialsam.models.sam31_segmenter import apply_memory_settings
+
+    predictor = SimpleNamespace(model=SimpleNamespace(batched_grounding_batch_size=16, postprocess_batch_size=16))
+    apply_memory_settings(predictor, Sam31Settings(grounding_batch_size=2, postprocess_batch_size=4))
+    assert predictor.model.batched_grounding_batch_size == 2
+    assert predictor.model.postprocess_batch_size == 4

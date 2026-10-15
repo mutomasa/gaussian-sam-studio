@@ -51,6 +51,13 @@ GPU や重みが無い環境でも、セグメンタに `fake` を選べばパ�
 撮影カメラの軌道に沿って描画する。結果（RGB / 深度 / 姿勢 / MP4）は `outputs/renders/<render_id>/` に保存され、
 「この動画を Video Segmentation で使う」で SAM 3.1 の入力にできる。
 
+同じページの「3DGS 学習」タブ、または CLI で、COLMAP（画像 + sparse）から 3DGS を学習できる
+（gsplat の MCMC 戦略。学習は別プロセスで動き、結果は `outputs/training/<job_id>/point_cloud.ply`）。
+
+```bash
+uv run python scripts/train_3dgs.py --sparse <scene>/sparse/0 --images <scene>/images_4 [--steps 7000] [--background]
+```
+
 ## テスト
 
 ```bash
@@ -72,8 +79,10 @@ src/spatialsam/
   ui/                       Streamlit 共有状態
   samples/                  サンプル動画の生成（DAVIS 2017）
   spatial/                  3DGS / 点群 / COLMAP の読み込み、gsplat 描画、カメラ軌道
+  training/                 gsplat による 3DGS 学習とジョブ管理（別プロセス）
 scripts/prepare_samples.py  サンプル動画と GT を samples/ に生成
 scripts/benchmark_samples.py  サンプルの一括推論・評価（CSV）
+scripts/train_3dgs.py       COLMAP から 3DGS を学習
 configs/samples.yaml        サンプルのシーケンスとプロンプト例
 tests/                      pytest
 ```

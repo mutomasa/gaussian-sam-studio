@@ -1,4 +1,4 @@
-"""Tab 2: 3D シーン（3DGS / 点群 / COLMAP）をカメラ軌道に沿って描画し、動画を作る。"""
+"""Tab 2: 3D シーン（3DGS / 点群 / COLMAP）をカメラ軌道に沿って描画して動画を作る。3DGS の学習も起動できる。"""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from spatialsam.spatial.renderer import GaussianRenderer
 from spatialsam.spatial.scene_source import AXES, SceneSource, default_orbit
 from spatialsam.spatial.trajectory import dataset_trajectory, fit_max_side, orbit_summary, orbit_trajectory
 from spatialsam.ui.state import SELECTED_VIDEO_KEY, get_config, show_gpu_status
+from spatialsam.ui.training_panel import PLY_PATH_KEY, SPARSE_PATH_KEY, training_panel
 
 LAST_RENDER_KEY = "last_render_id"
 ORBIT, DATASET = "オービット（注視点の周りを一周）", "データセットの撮影カメラ（COLMAP）"
@@ -27,16 +28,17 @@ def load_source(source: SceneSource) -> tuple[GaussianScene, list[ColmapView]]:
     return source.load_scene(), source.load_views()
 
 
-def _optional_path(label: str, help_text: str) -> Path | None:
-    value = st.text_input(label, help=help_text).strip()
+def _optional_path(label: str, help_text: str, key: str) -> Path | None:
+    value = st.text_input(label, help=help_text, key=key).strip()
     return Path(value).expanduser() if value else None
 
 
 def select_source() -> SceneSource | None:
     st.subheader("シーン")
-    ply = _optional_path("PLY のパス（3DGS または点群）", "INRIA 形式の 3DGS PLY、または x/y/z（と red/green/blue）を持つ点群 PLY")
+    ply = _optional_path("PLY のパス（3DGS または点群）", "INRIA 形式の 3DGS PLY、または x/y/z（と red/green/blue）を持つ点群 PLY", PLY_PATH_KEY)
     sparse = _optional_path("COLMAP の sparse ディレクトリ（任意）",
-                            "cameras.bin / images.bin / points3D.bin を含むディレクトリ。PLY が無ければ points3D を描く")
+                            "cameras.bin / images.bin / points3D.bin を含むディレクトリ。PLY が無ければ points3D を描く",
+                            SPARSE_PATH_KEY)
     if ply is None and sparse is None:
         st.info("PLY か COLMAP のパスを入力してください")
         return None
@@ -118,10 +120,7 @@ def select_run(store: RenderStore) -> RenderRun | None:
     return store.open(choice)
 
 
-def main() -> None:
-    st.set_page_config(page_title="3D Rendering", layout="wide")
-    st.title("3D Scene & Rendering")
-    status = show_gpu_status()
+def render_panel(gpu_available: bool) -> None:
     source = select_source()
     if source is not None:
         scene, views = load_source(source)
@@ -129,12 +128,23 @@ def main() -> None:
         st.caption(f"Gaussian {len(scene):,} 個 / SH 次数 {scene.sh_degree} / 撮影カメラ {len(views)} 台 / 範囲 {bounds}")
         frames, trajectory = select_trajectory(scene, views)
         fps = st.number_input("FPS", 1.0, 60.0, 24.0)
-        if st.button("描画", type="primary", disabled=not status.available or not frames):
+        if st.button("描画", type="primary", disabled=not gpu_available or not frames):
             st.session_state[LAST_RENDER_KEY] = render(source, scene, frames, trajectory, fps).id
     st.divider()
     run = select_run(RenderStore(get_config().outputs_dir))
     if run is not None:
         show_run(run)
+
+
+def main() -> None:
+    st.set_page_config(page_title="3D Rendering", layout="wide")
+    st.title("3D Scene & Rendering")
+    status = show_gpu_status()
+    render_tab, training_tab = st.tabs(["描画", "3DGS 学習"])
+    with render_tab:
+        render_panel(status.available)
+    with training_tab:
+        training_panel(status.available)
 
 
 main()

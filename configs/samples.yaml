@@ -1,0 +1,31 @@
+# GT 付きサンプル動画（scripts/prepare_samples.py で samples/ に生成）
+dataset: DAVIS 2017 TrainVal 480p (val split)
+url: https://data.vision.ee.ethz.ch/csergi/share/davis/DAVIS-2017-trainval-480p.zip
+sha256: e3d0b5b77c3d031b000a19e0e25e3e2cac65d183755601bc2cf066df1a2aa492
+license: CC BY-NC 4.0（非商用。データはリポジトリに含めない）
+fps: 24
+
+# 評価は「全予測マスクの和集合 vs GT 前景」なので、GT 対象と同じ種類の物体が
+# 他に映らないシーケンスを選んでいる（camel だけは比較用にあえて含める）
+samples:
+  - sequence: blackswan
+    prompt: swan
+    note: 単一物体・静的背景の基本ケース
+  - sequence: cows
+    prompt: cow
+    note: 単一物体・大きな対象
+  - sequence: dog
+    prompt: dog
+    note: 姿勢変化
+  - sequence: goat
+    prompt: goat
+    note: 背景と色が近い
+  - sequence: libby
+    prompt: dog
+    note: 木や柵による部分遮蔽（遮蔽耐性の検証）
+  - sequence: parkour
+    prompt: person
+    note: 大きなカメラ移動・視点変化
+  - sequence: camel
+    prompt: camel
+    note: GT 対象外のラクダが背後に映る（誤検出で IoU が下がる比較用ケース）

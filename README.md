@@ -17,6 +17,14 @@ hf auth login
 hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460
 ```
 
+## サンプル動画（GT 付き）
+
+```bash
+uv run python scripts/prepare_samples.py   # DAVIS 2017 から samples/ に生成（CC BY-NC 4.0）
+```
+
+詳細は [samples/README.md](samples/README.md)。
+
 ## 起動
 
 ```bash
@@ -44,5 +52,8 @@ src/spatialsam/
   experiments/              実験ストア（outputs/<experiment_id>/）
   pipeline/                 推論・評価の一連の処理
   ui/                       Streamlit 共有状態
+  samples/                  サンプル動画の生成（DAVIS 2017）
+scripts/prepare_samples.py  サンプル動画と GT を samples/ に生成
+configs/samples.yaml        サンプルのシーケンスとプロンプト例
 tests/                      pytest
 ```

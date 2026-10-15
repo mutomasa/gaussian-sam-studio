@@ -13,12 +13,22 @@ from spatialsam.config import PROJECT_ROOT, AppConfig
 from spatialsam.experiments.store import Experiment
 from spatialsam.models.factory import SEGMENTER_NAMES, create_segmenter
 from spatialsam.pipeline.segmentation import SegmentationJob, run_segmentation
+from spatialsam.samples.davis import load_manifest
 from spatialsam.ui.state import LAST_EXPERIMENT_KEY, get_config, get_registry, get_store, show_gpu_status
 from spatialsam.video.io import FrameSampling, frame_path
 from spatialsam.video.overlay import overlay_masks, render_mask_only
 from spatialsam.video.upload import save_upload, validate_video_upload
 
 SAMPLES_DIR = PROJECT_ROOT / "samples"
+SAMPLES_MANIFEST = PROJECT_ROOT / "configs" / "samples.yaml"
+
+
+def suggested_prompt(video: Path | None) -> str:
+    """サンプル動画なら configs/samples.yaml のプロンプト例を返す。"""
+    if video is None or not SAMPLES_MANIFEST.exists():
+        return ""
+    prompts = {s.sequence: s.prompt for s in load_manifest(SAMPLES_MANIFEST).samples}
+    return prompts.get(video.stem, "")
 
 
 def select_video(config: AppConfig) -> Path | None:
@@ -29,7 +39,7 @@ def select_video(config: AppConfig) -> Path | None:
         return save_upload(uploaded.getvalue(), uploaded.name, upload_dir)
     samples = sorted(SAMPLES_DIR.glob("*.mp4"))
     if not samples:
-        st.info("`samples/` に MP4 を置くとここから選べます")
+        st.info("`uv run python scripts/prepare_samples.py` で GT 付きサンプル動画を用意できます")
         return None
     choice = st.selectbox("またはサンプル動画", [None, *samples], format_func=lambda p: p.name if p else "—")
     return choice
@@ -106,7 +116,8 @@ def main() -> None:
     except ValueError as error:
         st.error(str(error))
         return
-    prompt = st.text_input("テキストプロンプト", placeholder="例: robot gripper")
+    prompt = st.text_input("テキストプロンプト", value=suggested_prompt(video), placeholder="例: robot gripper",
+                           key=f"prompt-{video}")
     if st.button("推論を実行", type="primary", disabled=video is None or not prompt.strip()):
         try:
             experiment = run(video, prompt.strip(), segmenter_name, sampling, config)

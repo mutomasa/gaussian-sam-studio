@@ -1,19 +1,22 @@
-"""Tab 4: GT マスクとの比較による精度評価と実験一覧。"""
+"""Tab 4: GT マスクとの比較による精度評価、実画像 vs 3D 描画の比較、実験一覧。"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+import cv2
 import pandas as pd
 import streamlit as st
 
 from spatialsam.config import PROJECT_ROOT
 from spatialsam.evaluation.ground_truth import load_gt_dir, load_gt_zip
+from spatialsam.experiments.comparisons import REAL, Comparison, ComparisonStore
 from spatialsam.experiments.store import Experiment, ExperimentStore
 from spatialsam.pipeline.evaluation import EvaluationReport, evaluate_experiment
 from spatialsam.samples.davis import default_gt_dir
-from spatialsam.ui.state import LAST_EXPERIMENT_KEY, get_store
+from spatialsam.ui.state import LAST_EXPERIMENT_KEY, get_config, get_store
+from spatialsam.video.overlay import overlay_masks
 
 SAMPLES_DIR = PROJECT_ROOT / "samples"
 
@@ -67,10 +70,7 @@ def experiments_table(store: ExperimentStore) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def main() -> None:
-    st.set_page_config(page_title="Evaluation", layout="wide")
-    st.title("Evaluation & Experiments")
-    store = get_store()
+def gt_panel(store: ExperimentStore) -> None:
     experiment = select_experiment(store)
     if experiment is None:
         return
@@ -80,6 +80,56 @@ def main() -> None:
             show_report(evaluate_experiment(experiment, gt_masks))
         except ValueError as error:
             st.error(str(error))
+
+
+def overlaid_frame(comparison: Comparison, source: str, index: int, experiment: Experiment | None):
+    frame = cv2.imread(str(comparison.frame_path(source, index)))
+    if experiment is None:
+        return frame
+    masks = experiment.load_prediction().by_frame().get(experiment.load_metadata()["frame_indices"][index])
+    return overlay_masks(frame, masks)
+
+
+def show_comparison(comparison: Comparison, store: ExperimentStore) -> None:
+    summary = comparison.load_summary()
+    st.caption(f"評価用視点 {summary['num_views']} 枚（学習に使っていない視点）/ {summary['resolution'][0]}x"
+               f"{summary['resolution'][1]} / シーン: {summary['sources']}")
+    st.markdown("**画質（実画像との比較）** — PSNR・SSIM は高いほど、LPIPS は低いほど実画像に近い")
+    st.dataframe(pd.DataFrame(summary["quality"]).T, use_container_width=False)
+    st.markdown("**SAM 3.1（実画像での結果を基準にした一致度）**")
+    st.dataframe(pd.DataFrame(summary["segmentation"]), hide_index=True)
+    sources = [REAL, *summary["sources"]]
+    cols = st.columns(2)
+    prompt = cols[0].selectbox("プロンプト", summary["prompts"])
+    index = cols[1].slider("視点", 0, summary["num_views"] - 1, 0)
+    st.caption(f"視点: {summary['views'][index]}")
+    for col, source in zip(st.columns(len(sources)), sources, strict=True):
+        experiment_id = summary["experiments"].get(f"{prompt}/{source}")
+        experiment = store.open(experiment_id) if experiment_id else None
+        col.image(overlaid_frame(comparison, source, index, experiment), channels="BGR", caption=source)
+    quality = comparison.load_table("quality")
+    if not quality.empty:
+        st.line_chart(quality.pivot(index="index", columns="source", values="psnr"), y_label="PSNR [dB]")
+
+
+def comparison_panel(store: ExperimentStore) -> None:
+    comparisons = ComparisonStore(get_config().outputs_dir)
+    ids = comparisons.list_ids()
+    if not ids:
+        st.info("`scripts/compare_render_vs_real.py` で実画像と 3D 描画を比較できます")
+        return
+    show_comparison(comparisons.open(st.selectbox("比較結果", ids)), store)
+
+
+def main() -> None:
+    st.set_page_config(page_title="Evaluation", layout="wide")
+    st.title("Evaluation & Experiments")
+    store = get_store()
+    gt_tab, comparison_tab = st.tabs(["GT マスクとの評価", "実画像 vs 3D 描画"])
+    with gt_tab:
+        gt_panel(store)
+    with comparison_tab:
+        comparison_panel(store)
     st.subheader("実験一覧")
     table = experiments_table(store)
     st.dataframe(table)

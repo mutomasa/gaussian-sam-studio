@@ -58,6 +58,14 @@ GPU や重みが無い環境でも、セグメンタに `fake` を選べばパ�
 uv run python scripts/train_3dgs.py --sparse <scene>/sparse/0 --images <scene>/images_4 [--steps 7000] [--background]
 ```
 
+学習に使っていない視点で、実画像と 3D 描画を画質（PSNR / SSIM / LPIPS）と SAM 3.1 の結果で比べられる
+（結果は Evaluation ページの「実画像 vs 3D 描画」タブ。bonsai での結果は [docs/render_vs_real.md](docs/render_vs_real.md)）。
+
+```bash
+uv run python scripts/compare_render_vs_real.py --sparse <scene>/sparse/0 --images <scene>/images_4 \
+    --source 3dgs=outputs/training/<job_id>/point_cloud.ply --points --prompt bonsai --prompt table
+```
+
 ## テスト
 
 ```bash
@@ -83,6 +91,7 @@ src/spatialsam/
 scripts/prepare_samples.py  サンプル動画と GT を samples/ に生成
 scripts/benchmark_samples.py  サンプルの一括推論・評価（CSV）
 scripts/train_3dgs.py       COLMAP から 3DGS を学習
+scripts/compare_render_vs_real.py  実画像 vs 3D 描画（画質と SAM）の比較
 configs/samples.yaml        サンプルのシーケンスとプロンプト例
 tests/                      pytest
 ```

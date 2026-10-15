@@ -94,3 +94,19 @@ class GaussianRenderer:
         alpha = alphas[0, ..., 0].cpu().numpy()
         rgb = composite(image[..., :3], alpha, s.background)
         return RenderOutput(to_rgb_uint8(rgb), expected_depth(image[..., 3], alpha), alpha)
+
+    def render_features(self, camera: Camera, features: np.ndarray) -> np.ndarray:
+        """Gaussian ごとの特徴（例: 物体ラベル 0/1）を α 合成した [H, W, D]。遮蔽も考慮される。"""
+        import torch
+
+        g = self._gaussians
+        tensor = lambda a: torch.as_tensor(a, dtype=torch.float32, device=g.device)[None]  # noqa: E731
+        values = torch.as_tensor(features, dtype=torch.float32, device=g.device)
+        values = values[:, None] if values.ndim == 1 else values
+        with torch.no_grad():
+            image, _, _ = self._rasterize(
+                g.means, g.quats, g.scales, g.opacities, values,
+                tensor(camera.world_to_cam), tensor(camera.K), camera.width, camera.height,
+                near_plane=self._settings.near_plane, far_plane=self._settings.far_plane,
+            )
+        return image[0].cpu().numpy()

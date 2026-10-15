@@ -40,6 +40,20 @@ class SceneSource:
     def label(self) -> str:
         return str(self.ply_path or self.sparse_dir / "points3D.bin")
 
+    def to_dict(self) -> dict[str, str | None]:
+        return {"ply_path": str(self.ply_path) if self.ply_path else None,
+                "sparse_dir": str(self.sparse_dir) if self.sparse_dir else None}
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, str | None]) -> SceneSource:
+        return cls(*(Path(raw[k]) if raw.get(k) else None for k in ("ply_path", "sparse_dir")))
+
+    @classmethod
+    def from_label(cls, label: str) -> SceneSource:
+        """scene_source を記録していない古い描画結果用（label は PLY か points3D.bin のパス）。"""
+        path = Path(label)
+        return cls(sparse_dir=path.parent) if path.name == "points3D.bin" else cls(ply_path=path)
+
     def load_scene(self) -> GaussianScene:
         if self.ply_path is not None:
             return load_scene(self.ply_path)

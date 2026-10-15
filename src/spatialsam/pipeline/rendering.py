@@ -32,6 +32,7 @@ class RenderJob:
     frames: list[tuple[str, Camera]]  # (元画像名 or "", カメラ)
     fps: float = 24.0
     trajectory: dict[str, Any] = field(default_factory=dict)
+    scene_source: dict[str, str | None] = field(default_factory=dict)  # 3D Segmentation でシーンを復元するため
 
 
 def _noop(_: str) -> None:
@@ -72,6 +73,7 @@ def build_metadata(job: RenderJob, elapsed_sec: float, peak_vram_mib: float | No
     return {
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "scene": str(job.scene_path),
+        "scene_source": job.scene_source,
         "num_frames": len(job.frames),
         "fps": job.fps,
         "resolution": [first.width, first.height],

@@ -179,3 +179,12 @@ def build_summary(job: ComparisonJob, quality: pd.DataFrame, masks: pd.DataFrame
         "experiments": experiment_ids,
         **job.info,
     }
+
+
+def comparison_cameras(comparison: Comparison) -> list[Camera]:
+    """比較に使った評価用視点のカメラ（実画像と同じく偶数サイズに切ったもの）を作り直す。"""
+    from spatialsam.training.dataset import ColmapDataset
+
+    info = comparison.load_summary()
+    views = ColmapDataset.load(Path(info["sparse_dir"]), Path(info["images_dir"]), info["holdout_every"]).test
+    return [crop_even(v).camera for v in views]

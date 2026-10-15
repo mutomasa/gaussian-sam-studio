@@ -71,7 +71,7 @@
 
 ## Phase 3 — Text-to-3D Segmentation
 
-- [ ] 2D Mask Lifting（深度・カメラ姿勢による逆投影）
-- [ ] 複数視点の統合と整合性チェック
-- [ ] 3D点群／Gaussian のハイライト表示
-- [ ] 3D IoU 等の評価
+- [x] 2D Mask Lifting（深度・カメラ姿勢による逆投影）#24 → [segmentation3d.md](segmentation3d.md)
+- [x] 複数視点の統合と整合性チェック（可視性つきの投票）#24
+- [ ] 3D点群／Gaussian のハイライト表示 #25
+- [x] 3D IoU 等の評価（評価用視点への再投影 IoU）#26

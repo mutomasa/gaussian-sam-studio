@@ -59,10 +59,17 @@ def orbit_trajectory(spec: OrbitSpec) -> list[Camera]:
 
 
 def dataset_trajectory(views: Sequence[ColmapView], stride: int = 1, max_frames: int | None = None,
-                       width: int | None = None, height: int | None = None) -> list[tuple[str, Camera]]:
-    """撮影順（画像名順）に間引いたカメラ。width/height を指定すると縮小画像に合わせる。"""
+                       width: int | None = None, height: int | None = None,
+                       exclude_holdout_every: int = 0) -> list[tuple[str, Camera]]:
+    """撮影順（画像名順）に間引いたカメラ。width/height を指定すると縮小画像に合わせる。
+
+    exclude_holdout_every=8 なら学習時の評価用視点（8 枚に 1 枚）を除く。3D への持ち上げに評価用視点を
+    使わないようにして、評価用視点での再投影 IoU を公平にするため。
+    """
     if stride < 1:
         raise ValueError("stride は 1 以上")
+    if exclude_holdout_every > 0:
+        views = [v for i, v in enumerate(views) if i % exclude_holdout_every != 0]
     selected = list(views)[::stride][:max_frames]
     return [(v.name, v.camera.resized(width, height) if width and height else v.camera) for v in selected]
 

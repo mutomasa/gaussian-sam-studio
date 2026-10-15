@@ -65,12 +65,16 @@ def orbit_frames(scene: GaussianScene, views: list[ColmapView]) -> tuple[list, d
 
 
 def dataset_frames(views: list[ColmapView]) -> tuple[list, dict]:
-    cols = st.columns(3)
+    cols = st.columns(4)
     stride = int(cols[0].number_input("間引き（stride）", 1, 100, 1))
     max_frames = int(cols[1].number_input("最大フレーム数（0 = すべて）", 0, 10000, 0)) or None
     max_side = int(cols[2].number_input("長辺 [px]", 64, 4096, 854, step=2))
-    frames = [(name, fit_max_side(camera, max_side)) for name, camera in dataset_trajectory(views, stride, max_frames)]
-    return frames, {"type": "dataset", "stride": stride, "max_frames": max_frames, "max_side": max_side}
+    holdout = int(cols[3].number_input("評価用視点を除く間隔（0 = 除かない）", 0, 100, 0,
+                                       help="8 にすると 3DGS 学習時の評価用視点（8 枚に 1 枚）を除く"))
+    cameras = dataset_trajectory(views, stride, max_frames, exclude_holdout_every=holdout)
+    frames = [(name, fit_max_side(camera, max_side)) for name, camera in cameras]
+    return frames, {"type": "dataset", "stride": stride, "max_frames": max_frames, "max_side": max_side,
+                    "exclude_holdout_every": holdout}
 
 
 def select_trajectory(scene: GaussianScene, views: list[ColmapView]) -> tuple[list, dict]:
@@ -83,7 +87,7 @@ def render(source: SceneSource, scene: GaussianScene, frames: list, trajectory: 
     with st.status("描画中", expanded=True) as status:
         renderer = GaussianRenderer(scene)
         try:
-            run = run_render(RenderJob(Path(source.label), frames, fps, trajectory), renderer,
+            run = run_render(RenderJob(Path(source.label), frames, fps, trajectory, source.to_dict()), renderer,
                              RenderStore(get_config().outputs_dir), progress=status.write)
         finally:
             del renderer

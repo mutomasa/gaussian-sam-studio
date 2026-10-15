@@ -10,6 +10,9 @@ sam31:
   max_num_objects: 16
   use_fa3: false        # RTX A1000 (Ampere) は FlashAttention 3 非対応
   score_threshold: 0.5
+  # 画像エンコーダ・後処理に何フレームまとめて通すか。公式既定 16 は 8GB で OOM（#2）
+  grounding_batch_size: 1
+  postprocess_batch_size: 1
 
 outputs_dir: outputs
 max_upload_mib: 500

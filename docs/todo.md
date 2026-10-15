@@ -2,15 +2,17 @@
 
 設計は [spatialsam_design.md](spatialsam_design.md) を参照。完了したら `[x]` にする。
 
+運用：作業ごとにブランチを切って PR を出す。問題点・未完了の作業は GitHub issue（`#N`）で管理し、PR 本文の `Closes #N` で閉じる。
+
 ## Phase 0 — 環境・前提
 
 - [x] git リポジトリ初期化、`.gitignore`
 - [x] `uv` プロジェクト作成（Python 3.12、core / `gpu` extra / dev group）
-- [ ] `facebook/sam3.1` のアクセス申請と承認（2026-10-15時点で403、未承認）
-- [ ] `uv sync --extra gpu` で torch 2.10 (cu128) + sam3 を導入
-- [ ] `hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460`
-- [ ] RTX A1000 (8GB) で SAM 3.1 の推論検証（Peak VRAM・速度、`use_fa3=False`）
-- [ ] 8GB に載らない場合は `facebook/sam3` → Grounding DINO + SAM 2.1 アダプタを実装
+- [ ] `facebook/sam3.1` のアクセス申請と承認（2026-10-15時点で403、未承認） #1
+- [x] `uv sync` で torch 2.10 (cu128) + sam3 を導入 #2（不足依存 #6、上流バグ回避 #7）
+- [ ] `hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460` #1
+- [ ] RTX A1000 (8GB) で SAM 3.1 の推論検証（Peak VRAM・速度、`use_fa3=False`） #3
+- [ ] 8GB に載らない場合は `facebook/sam3` → Grounding DINO + SAM 2.1 アダプタを実装 #3
 
 ## Phase 1 — Video Segmentation & Evaluation Studio（MVP）
 
@@ -29,8 +31,9 @@
 - [x] `VideoSegmenter` インターフェース
 - [x] `FakeSegmenter`（GPU・重み無しでUI/パイプラインを動かすためのダミー）
 - [x] `Sam31Segmenter`（`build_sam3_multiplex_video_predictor` を遅延import）
-- [ ] `Sam31Segmenter` を実機で動作確認（重み承認待ち）
-- [ ] bf16 autocast・チャンク分割・OOM時の自動リトライ
+- [ ] `Sam31Segmenter` を実機で動作確認（重み承認待ち） #3
+- [x] 画像エンコーダのバッチサイズを 16 → 1 に変更（8GB で OOM するため）#2
+- [ ] bf16 重み・フレームの CPU オフロード・チャンク分割・OOM時の自動リトライ #4
 
 ### 評価
 - [x] IoU / Dice
@@ -50,8 +53,8 @@
 - [x] Streamlit トップページ（GPU状態表示）
 - [x] Tab 1: Video Segmentation（アップロード・プロンプト・推論設定・結果表示）
 - [x] Tab 4: Evaluation（GT取り込み・メトリクス表示・エクスポート）
-- [ ] GT付きサンプル動画の用意（DAVIS 2017 等）と `samples/README.md`
-- [ ] 実機SAM 3.1で入力→推論→可視化の一連動作確認
+- [ ] GT付きサンプル動画の用意（DAVIS 2017 等）と `samples/README.md` #5
+- [ ] 実機SAM 3.1で入力→推論→可視化の一連動作確認 #3
 
 ### テスト
 - [x] pytest で各モジュールの単体テスト

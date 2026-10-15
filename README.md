@@ -9,8 +9,8 @@
 ## セットアップ
 
 ```bash
-uv sync                    # UI・評価・fake セグメンタ（GPU 不要）
-uv sync --extra gpu        # torch 2.10 (cu128) + sam3（ローカル GPU 推論）
+uv sync                    # torch 2.10 (cu128) + sam3 を含む全依存（既定で dev / gpu グループ）
+uv sync --no-group gpu     # GPU 無し環境（UI・評価・fake セグメンタのみ）
 
 # SAM 3.1 の重み（HF でアクセス承認後）
 hf auth login

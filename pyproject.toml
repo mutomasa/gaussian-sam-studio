@@ -1,0 +1,48 @@
+[project]
+name = "spatialsam-studio"
+version = "0.1.0"
+description = "Text-prompted video segmentation (SAM 3.1) with evaluation, toward 3DGS integration"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "imageio>=2.34",
+    "imageio-ffmpeg>=0.5",
+    "numpy>=1.26,<2",
+    "opencv-python-headless>=4.9",
+    "pandas>=2.2",
+    "pyyaml>=6.0",
+    "streamlit>=1.40",
+]
+
+[project.optional-dependencies]
+# ローカルGPU推論用。`uv sync --extra gpu` で導入する
+gpu = [
+    "torch==2.10.0",
+    "torchvision",
+    "sam3",
+    "einops",
+    "pycocotools",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+sam3 = { git = "https://github.com/facebookresearch/sam3", rev = "7f473cfd983d5eb43040ff608f66bff0d7bdcb53" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spatialsam"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

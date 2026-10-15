@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# 実験出力・モデル・大きな入力データ
+outputs/*
+!outputs/.gitkeep
+/models/
+samples/*
+!samples/.gitkeep
+!samples/README.md
+*.pt
+*.safetensors
+*.mp4
+
+.streamlit/secrets.toml

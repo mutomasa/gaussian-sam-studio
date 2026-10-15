@@ -1,0 +1,103 @@
+"""SAM 3.1 Object Multiplex（facebook/sam3.1）をローカルGPUで動かすアダプタ。
+
+`sam3` パッケージは `uv sync --extra gpu` で導入する。import は推論時まで遅延させる。
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
+
+from spatialsam.models.types import FrameMasks, SegmentationRequest, SegmentationResult
+
+
+@dataclass(frozen=True)
+class Sam31Settings:
+    checkpoint_path: str | None = None
+    max_num_objects: int = 16
+    use_fa3: bool = False  # FlashAttention 3 は Hopper 専用。Ampere 等では False
+    score_threshold: float = 0.5
+
+
+def build_sam31_predictor(settings: Sam31Settings) -> Any:
+    from sam3.model_builder import build_sam3_multiplex_video_predictor
+
+    return build_sam3_multiplex_video_predictor(
+        checkpoint_path=settings.checkpoint_path,
+        max_num_objects=settings.max_num_objects,
+        use_fa3=settings.use_fa3,
+        default_output_prob_thresh=settings.score_threshold,
+    )
+
+
+def _to_numpy(value: Any) -> np.ndarray:
+    if hasattr(value, "detach"):
+        value = value.detach().cpu().numpy()
+    return np.asarray(value)
+
+
+def convert_frame_output(frame_index: int, output: dict[str, Any]) -> FrameMasks:
+    """SAM 3 の `outputs`（out_obj_ids / out_binary_masks / out_probs）を正規化する。"""
+    obj_ids = _to_numpy(output["out_obj_ids"]).tolist()
+    masks = _to_numpy(output["out_binary_masks"]).astype(bool)
+    probs = _to_numpy(output.get("out_probs", np.ones(len(obj_ids))))
+    kept = [i for i, _ in enumerate(obj_ids) if masks[i].any()]
+    return FrameMasks(
+        frame_index,
+        {int(obj_ids[i]): masks[i] for i in kept},
+        {int(obj_ids[i]): float(probs[i]) for i in kept},
+    )
+
+
+class Sam31Segmenter:
+    name = "sam3.1"
+
+    def __init__(
+        self,
+        settings: Sam31Settings,
+        predictor_factory: Callable[[Sam31Settings], Any] = build_sam31_predictor,
+    ) -> None:
+        self._settings = settings
+        self._factory = predictor_factory
+        self._predictor: Any | None = None
+
+    def segment(self, request: SegmentationRequest) -> SegmentationResult:
+        predictor = self._get_predictor()
+        session_id = self._start_session(predictor, str(request.frames_dir))
+        try:
+            self._add_text_prompt(predictor, session_id, request.prompt)
+            responses = self._propagate(predictor, session_id)
+            frames = [convert_frame_output(r["frame_index"], r["outputs"]) for r in responses]
+        finally:
+            predictor.handle_request({"type": "close_session", "session_id": session_id})
+        return SegmentationResult(sorted(frames, key=lambda f: f.frame_index))
+
+    def release(self) -> None:
+        if self._predictor is not None and hasattr(self._predictor, "shutdown"):
+            self._predictor.shutdown()
+        self._predictor = None
+
+    def _get_predictor(self) -> Any:
+        if self._predictor is None:
+            self._predictor = self._factory(self._settings)
+        return self._predictor
+
+    @staticmethod
+    def _start_session(predictor: Any, resource_path: str) -> str:
+        response = predictor.handle_request({"type": "start_session", "resource_path": resource_path})
+        return response["session_id"]
+
+    @staticmethod
+    def _add_text_prompt(predictor: Any, session_id: str, prompt: str) -> None:
+        predictor.handle_request(
+            {"type": "add_prompt", "session_id": session_id, "frame_index": 0, "text": prompt}
+        )
+
+    @staticmethod
+    def _propagate(predictor: Any, session_id: str) -> Iterable[dict[str, Any]]:
+        return list(
+            predictor.handle_stream_request({"type": "propagate_in_video", "session_id": session_id})
+        )

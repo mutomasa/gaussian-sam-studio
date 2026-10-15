@@ -1,0 +1,15 @@
+# モデル設定。セグメンタは UI からも切り替えられる（sam3.1 / fake）
+default_segmenter: sam3.1
+
+sam31:
+  source:
+    repo_id: facebook/sam3.1
+    revision: daa63191845a41281374e725f4c9e51c7a824460
+  # null なら sam3 が HF キャッシュから取得する。オフライン運用ではローカルパスを指定
+  checkpoint_path: null
+  max_num_objects: 16
+  use_fa3: false        # RTX A1000 (Ampere) は FlashAttention 3 非対応
+  score_threshold: 0.5
+
+outputs_dir: outputs
+max_upload_mib: 500

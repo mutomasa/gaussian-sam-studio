@@ -57,3 +57,6 @@ def test_dataset_trajectory_strides_and_resizes():
     assert picked[0][1].width == 50 and picked[0][1].K[0, 0] == 50
     with pytest.raises(ValueError):
         dataset_trajectory(views, stride=0)
+    train_only = dataset_trajectory(views, exclude_holdout_every=4)
+    assert [name for name, _ in train_only] == ["01.jpg", "02.jpg", "03.jpg", "05.jpg", "06.jpg", "07.jpg",
+                                                "09.jpg", "10.jpg", "11.jpg"]

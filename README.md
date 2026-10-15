@@ -92,6 +92,7 @@ scripts/prepare_samples.py  サンプル動画と GT を samples/ に生成
 scripts/benchmark_samples.py  サンプルの一括推論・評価（CSV）
 scripts/train_3dgs.py       COLMAP から 3DGS を学習
 scripts/compare_render_vs_real.py  実画像 vs 3D 描画（画質と SAM）の比較
+scripts/lift_masks.py       SAM の 2D マスクを Gaussian に持ち上げる（3D セグメンテーション）
 configs/samples.yaml        サンプルのシーケンスとプロンプト例
 tests/                      pytest
 ```

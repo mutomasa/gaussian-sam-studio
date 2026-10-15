@@ -10,6 +10,7 @@ from spatialsam.models.gpu import GpuStatus, query_gpu_status
 from spatialsam.models.registry import ModelRegistry
 
 LAST_EXPERIMENT_KEY = "last_experiment_id"
+SELECTED_VIDEO_KEY = "selected_video"  # 他ページから Video Segmentation に渡す動画のパス
 
 
 @st.cache_resource

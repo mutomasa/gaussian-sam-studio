@@ -21,6 +21,7 @@ st.markdown(
 左のサイドバーからページを選んでください。
 
 1. **Video Segmentation** — 動画とプロンプトから推論し、重畳動画を確認する
-2. **Evaluation** — GT マスクと比較して IoU / Dice / J&F を計算する
+2. **3D Rendering** — 3DGS / 点群 / COLMAP のシーンをカメラ軌道に沿って描画し、RGB・深度・姿勢付きの動画を作る
+3. **Evaluation** — GT マスクと比較して IoU / Dice / J&F を計算する
 """
 )

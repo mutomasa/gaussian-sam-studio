@@ -10,17 +10,19 @@ import pandas as pd
 import streamlit as st
 
 from spatialsam.config import PROJECT_ROOT, AppConfig
+from spatialsam.experiments.renders import RenderStore
 from spatialsam.experiments.store import Experiment
 from spatialsam.models.factory import SEGMENTER_NAMES, create_segmenter
 from spatialsam.pipeline.segmentation import SegmentationJob, run_segmentation
 from spatialsam.samples.davis import load_manifest
-from spatialsam.ui.state import LAST_EXPERIMENT_KEY, get_config, get_registry, get_store, show_gpu_status
+from spatialsam.ui.state import LAST_EXPERIMENT_KEY, SELECTED_VIDEO_KEY, get_config, get_registry, get_store, show_gpu_status
 from spatialsam.video.io import FrameSampling, frame_path
 from spatialsam.video.overlay import overlay_masks, render_mask_only
 from spatialsam.video.upload import save_upload, validate_video_upload
 
 SAMPLES_DIR = PROJECT_ROOT / "samples"
 SAMPLES_MANIFEST = PROJECT_ROOT / "configs" / "samples.yaml"
+VIDEO_CHOICE_KEY = "video-choice"
 
 
 def suggested_prompt(video: Path | None) -> str:
@@ -31,18 +33,27 @@ def suggested_prompt(video: Path | None) -> str:
     return prompts.get(video.stem, "")
 
 
+def video_label(path: Path | None) -> str:
+    if path is None:
+        return "—"
+    return f"[3D 描画] {path.name}" if path.parent.parent.name == "renders" else path.name
+
+
 def select_video(config: AppConfig) -> Path | None:
     uploaded = st.file_uploader("動画をアップロード", type=["mp4", "mov", "avi", "mkv"])
     if uploaded is not None:
         validate_video_upload(uploaded.name, uploaded.size, config.max_upload_mib)
         upload_dir = Path(tempfile.gettempdir()) / "spatialsam-uploads" / uploaded.file_id
         return save_upload(uploaded.getvalue(), uploaded.name, upload_dir)
-    samples = sorted(SAMPLES_DIR.glob("*.mp4"))
-    if not samples:
+    candidates = sorted(SAMPLES_DIR.glob("*.mp4")) + RenderStore(config.outputs_dir).videos()
+    if not candidates:
         st.info("`uv run python scripts/prepare_samples.py` で GT 付きサンプル動画を用意できます")
         return None
-    choice = st.selectbox("またはサンプル動画", [None, *samples], format_func=lambda p: p.name if p else "—")
-    return choice
+    handed_over = st.session_state.pop(SELECTED_VIDEO_KEY, None)
+    if handed_over and Path(handed_over) in candidates:
+        st.session_state[VIDEO_CHOICE_KEY] = Path(handed_over)  # 3D Rendering ページから渡された動画を選んでおく
+    return st.selectbox("またはサンプル動画・3D シーンの描画動画", [None, *candidates], format_func=video_label,
+                        key=VIDEO_CHOICE_KEY)
 
 
 def sidebar_settings(config: AppConfig) -> tuple[str, FrameSampling]:

@@ -310,7 +310,7 @@ spatialsam-studio/
 
 - **ライセンス**：SAM License（HFでは `license: other`）。HFのモデルページでアクセス申請し、承認後に `hf auth login` で認証してダウンロードする。
 - **取得**：`hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460`（commit SHAで固定）。
-- **コード**：`facebookresearch/sam3` の最新版が必要（SAM 3.1 は旧バージョンのコードでは読み込めない）。公式の要件は Python 3.12以上、PyTorch 2.10 + CUDA 12.8。uvではgit依存として追加する。
+- **コード**：`facebookresearch/sam3` の最新版が必要（SAM 3.1 は旧バージョンのコードでは読み込めない）。公式の要件は Python 3.12以上、PyTorch 2.10 + CUDA 12.8。uvではgit依存として追加する。本リポジトリでは gsplat の JIT ビルドに pip 版 nvcc（CUDA 13 系のみ nvcc 本体を含む）を使うため、PyTorch 2.10 の cu130 ビルドを使う（SAM 3.1 の結果は cu128 と同一）。
 - **API**：`from sam3.model_builder import build_sam3_multiplex_video_predictor` → `handle_request(type="start_session", resource_path=...)` → `handle_request(type="add_prompt", text=...)`。入力はMP4またはJPEGフレームのフォルダ。
 - **8GB VRAM**：公式の速度評価はH100前提。チェックポイントはfp32で約3.5GB（パラメータ数は約8.7億と推定）なので、bf16にすれば重み自体は約1.8GBに収まる見込み。動画メモリと物体数に応じてVRAM使用量が増えるため、実測で確認する。
 

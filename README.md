@@ -76,7 +76,7 @@ uv run pytest
 
 ```text
 app.py                      トップページ（GPU 状態）
-pages/                      1: Video Segmentation, 2: 3D Rendering, 4: Evaluation
+pages/                      1: Video Segmentation, 2: 3D Rendering, 3: 3D Segmentation, 4: Evaluation
 configs/model.yaml          モデル設定（repo / revision / 推論パラメータ）
 src/spatialsam/
   models/                   データ型・セグメンタ（SAM 3.1 / fake）・GPU・レジストリ

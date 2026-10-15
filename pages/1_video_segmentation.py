@@ -69,6 +69,9 @@ def show_summary(experiment: Experiment) -> None:
     cols[2].metric("処理時間 [s]", f"{perf['elapsed_sec']:.1f}")
     cols[3].metric("Peak VRAM [MiB]", "—" if perf["peak_vram_mib"] is None else f"{perf['peak_vram_mib']:,.0f}")
     st.caption(f"実験 ID: `{experiment.id}` / プロンプト: `{meta['prompt']}` / モデル: `{meta['model']}`")
+    if meta.get("oom_retries"):
+        st.warning(f"GPU メモリ不足のため {len(meta['oom_retries'])} 回縮小して再実行しました"
+                   f"（最終: {len(meta['frame_indices'])} フレーム）")
 
 
 def show_videos(experiment: Experiment) -> None:

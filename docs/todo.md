@@ -33,7 +33,8 @@
 - [x] `Sam31Segmenter`（`build_sam3_multiplex_video_predictor` を遅延import）
 - [ ] `Sam31Segmenter` を実機で動作確認（重み承認待ち） #3
 - [x] 画像エンコーダのバッチサイズを 16 → 1 に変更（8GB で OOM するため）#2
-- [ ] bf16 重み・フレームの CPU オフロード・チャンク分割・OOM時の自動リトライ #4
+- [x] backbone の bf16 化・フレームの CPU オフロード・OOM時の自動リトライ #4
+- [ ] 長尺動画のチャンク分割（チャンク間の物体ID継続）#9
 
 ### 評価
 - [x] IoU / Dice

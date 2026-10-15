@@ -45,6 +45,11 @@ def query_gpu_status(torch_module: ModuleType | None = None) -> GpuStatus:
     return GpuStatus(True, torch.cuda.get_device_name(0), total / MIB, free / MIB)
 
 
+def is_out_of_memory(error: BaseException) -> bool:
+    """torch.cuda.OutOfMemoryError（torch を import せずに判定）。"""
+    return type(error).__name__ == "OutOfMemoryError" or "CUDA out of memory" in str(error)
+
+
 def empty_cuda_cache() -> None:
     torch = _import_torch()
     if torch is not None and torch.cuda.is_available():

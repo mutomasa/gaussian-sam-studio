@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -140,6 +141,41 @@ def test_apply_memory_settings_overrides_batch_sizes():
     from spatialsam.models.sam31_segmenter import apply_memory_settings
 
     predictor = SimpleNamespace(model=SimpleNamespace(batched_grounding_batch_size=16, postprocess_batch_size=16))
-    apply_memory_settings(predictor, Sam31Settings(grounding_batch_size=2, postprocess_batch_size=4))
+    settings = Sam31Settings(grounding_batch_size=2, postprocess_batch_size=4, bf16_backbone=False)
+    apply_memory_settings(predictor, settings)
     assert predictor.model.batched_grounding_batch_size == 2
     assert predictor.model.postprocess_batch_size == 4
+
+
+def test_apply_memory_settings_casts_only_backbone_to_bf16():
+    import torch
+
+    from spatialsam.models.sam31_segmenter import apply_memory_settings
+
+    backbone, head = torch.nn.Linear(2, 2), torch.nn.Linear(2, 2)
+    model = SimpleNamespace(detector=SimpleNamespace(backbone=backbone), head=head)
+    apply_memory_settings(SimpleNamespace(model=model), Sam31Settings())
+    assert backbone.weight.dtype == torch.bfloat16
+    assert head.weight.dtype == torch.float32
+
+
+def test_start_session_passes_offload_flag(tmp_path):
+    predictor = FakePredictor()
+    sent = []
+    original = predictor.handle_request
+    predictor.handle_request = lambda request: (sent.append(request), original(request))[1]
+    Sam31Segmenter(Sam31Settings(offload_video_to_cpu=True), lambda _: predictor).segment(
+        SegmentationRequest(tmp_path, "cube")
+    )
+    assert sent[0]["offload_video_to_cpu"] is True
+
+
+def test_is_out_of_memory():
+    from spatialsam.models.gpu import is_out_of_memory
+
+    class OutOfMemoryError(RuntimeError):
+        pass
+
+    assert is_out_of_memory(OutOfMemoryError("x"))
+    assert is_out_of_memory(RuntimeError("CUDA out of memory. Tried to allocate 82.00 MiB"))
+    assert not is_out_of_memory(ValueError("other"))

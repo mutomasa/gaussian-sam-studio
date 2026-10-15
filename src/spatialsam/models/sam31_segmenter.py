@@ -24,12 +24,21 @@ class Sam31Settings:
     # 何フレームまとめて画像エンコーダ・後処理に通すか。公式ビルダーは 16 固定（H100 前提）
     grounding_batch_size: int = 1
     postprocess_batch_size: int = 1
+    # 画像・テキストエンコーダ（全パラメータの 94%）だけ bf16 で保持する。他は fp32 のまま
+    bf16_backbone: bool = True
+    # デコード済みフレームを GPU ではなく CPU メモリに置く
+    offload_video_to_cpu: bool = True
 
 
 def apply_memory_settings(predictor: Any, settings: Sam31Settings) -> Any:
-    """ビルダー引数で変えられないバッチサイズを、構築後に上書きする（8GB VRAM 向け）。"""
+    """ビルダー引数で変えられない省メモリ設定を、構築後に反映する（8GB VRAM 向け）。"""
     predictor.model.batched_grounding_batch_size = settings.grounding_batch_size
     predictor.model.postprocess_batch_size = settings.postprocess_batch_size
+    if settings.bf16_backbone:
+        import torch
+
+        predictor.model.detector.backbone.to(torch.bfloat16)
+        torch.cuda.empty_cache()
     return predictor
 
 
@@ -97,9 +106,12 @@ class Sam31Segmenter:
             self._predictor = self._factory(self._settings)
         return self._predictor
 
-    @staticmethod
-    def _start_session(predictor: Any, resource_path: str) -> str:
-        response = predictor.handle_request({"type": "start_session", "resource_path": resource_path})
+    def _start_session(self, predictor: Any, resource_path: str) -> str:
+        response = predictor.handle_request({
+            "type": "start_session",
+            "resource_path": resource_path,
+            "offload_video_to_cpu": self._settings.offload_video_to_cpu,
+        })
         return response["session_id"]
 
     @staticmethod

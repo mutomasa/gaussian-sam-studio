@@ -9,7 +9,7 @@
 ## セットアップ
 
 ```bash
-uv sync                    # torch 2.10 (cu128) + sam3 を含む全依存（既定で dev / gpu グループ）
+uv sync                    # torch 2.10 (cu130) + sam3 + gsplat を含む全依存（既定で dev / gpu グループ）
 uv sync --no-group gpu     # GPU 無し環境（UI・評価・fake セグメンタのみ）
 
 # SAM 3.1 の重み（HF でアクセス承認後）
@@ -20,6 +20,11 @@ hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460
 重みは `configs/model.yaml` の `sam31.source.revision` で固定したものを HF キャッシュから読む
 （`HF_HUB_OFFLINE=1` でも動く）。別の場所の重みを使うときは `sam31.checkpoint_path` を指定する。
 fine-grained トークンの場合は「public gated repos への読み取り」権限が必要。
+
+gsplat は torch 2.10 向けの prebuilt wheel が無いため、初回 import 時に CUDA カーネルを JIT ビルドする
+（A1000 で約 2 分、`~/.cache/spatialsam/torch_extensions` にキャッシュ）。nvcc は venv 内の pip 版を
+`spatialsam.spatial.cuda_env` が自動で使うので、システムへの CUDA ツールチェーンの導入は不要
+（NVIDIA ドライバは CUDA 13.0 以上に対応していること）。
 
 ## サンプル動画（GT 付き）
 

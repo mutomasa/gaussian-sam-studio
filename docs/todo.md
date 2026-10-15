@@ -9,7 +9,7 @@
 - [x] git リポジトリ初期化、`.gitignore`
 - [x] `uv` プロジェクト作成（Python 3.12、core / `gpu` extra / dev group）
 - [x] `facebook/sam3.1` のアクセス申請と承認（2026-10-16 承認。fine-grained トークンは gated repo 読み取り権限が必要） #1
-- [x] `uv sync` で torch 2.10 (cu128) + sam3 を導入 #2（不足依存 #6、上流バグ回避 #7）
+- [x] `uv sync` で torch 2.10 + sam3 を導入 #2（不足依存 #6、上流バグ回避 #7）。gsplat の JIT ビルドのため cu128 → cu130 に変更 #13
 - [x] `hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460` #1
 - [x] RTX A1000 (8GB) で SAM 3.1 の推論検証（Peak VRAM・速度、`use_fa3=False`）→ [docs/benchmark_sam31.md](benchmark_sam31.md) #3
 - [x] ~~8GB に載らない場合のフォールバック実装~~ → bf16 backbone で 100 フレーム 4.7GB に収まるため不要 #3
@@ -62,11 +62,11 @@
 
 ## Phase 2 — Point Cloud / 3DGS Rendering
 
-- [ ] gsplat 導入（PyTorch/CUDAとの整合確認）
-- [ ] PLY/PCD・既存3DGSシーンのインポート
-- [ ] カメラ軌道設定と RGB/Depth/Pose 付きフレーム生成、MP4化
-- [ ] 生成動画を Phase 1 パイプラインに投入
-- [ ] 実画像 vs レンダリング画像の比較（PSNR/SSIM/LPIPS、IoU）
+- [x] gsplat 導入（PyTorch/CUDAとの整合確認）#13
+- [ ] PLY/PCD・既存3DGSシーンのインポート #14
+- [ ] カメラ軌道設定と RGB/Depth/Pose 付きフレーム生成、MP4化 #15
+- [ ] 生成動画を Phase 1 パイプラインに投入 #15
+- [ ] 実画像 vs レンダリング画像の比較（PSNR/SSIM/LPIPS、IoU）#16
 
 ## Phase 3 — Text-to-3D Segmentation
 

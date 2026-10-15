@@ -2,7 +2,7 @@
 
 - 日付: 2026-10-16
 - モデル: `facebook/sam3.1` @ `daa63191845a41281374e725f4c9e51c7a824460`（`sam3.1_multiplex.pt`）
-- コード: `facebookresearch/sam3` @ `7f473cfd983d5eb43040ff608f66bff0d7bdcb53`、torch 2.10.0+cu128
+- コード: `facebookresearch/sam3` @ `7f473cfd983d5eb43040ff608f66bff0d7bdcb53`、torch 2.10.0+cu128（cu130 に移行後も blackswan / dog で同一の結果を確認）
 - 設定: `configs/model.yaml` の既定（`use_fa3=false`、画像エンコーダのバッチ 1、フレームの CPU オフロード）
 - 入力: DAVIS 2017 val 480p（854x480）の全フレーム、テキストプロンプトは `configs/samples.yaml`
 - 評価: 全予測マスクの和集合 vs GT 前景（J = IoU、F = 輪郭 F、J&F = 平均）

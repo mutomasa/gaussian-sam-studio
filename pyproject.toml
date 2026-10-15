@@ -30,19 +30,29 @@ gpu = [
     "scipy",
     # sam3 の model_builder が pkg_resources を使うため（setuptools>=81 で削除済み）#6
     "setuptools<81",
+    # 3DGS 描画。torch 2.10 向けの prebuilt wheel が無いため初回に CUDA カーネルを JIT ビルドする #13
+    "gsplat==1.5.3",
+    # システムに CUDA ツールチェーンが無くても JIT ビルドできるよう nvcc を venv に入れる。
+    # cu12 系の pip wheel には nvcc 本体が無い（ptxas のみ）ため torch も cu130 にしている #13
+    "nvidia-cuda-nvcc==13.0.88",
+    "nvidia-cuda-cccl==13.0.85",
+    # nvcc の依存は上限が無く最新（13.4）が入り、PTX のバージョンが ptxas（13.0）と食い違うので揃える
+    "nvidia-nvvm==13.0.88",
+    "nvidia-cuda-crt==13.0.88",
+    "plyfile>=1.0",
 ]
 
 [tool.uv]
 default-groups = ["dev", "gpu"]
 
 [tool.uv.sources]
-torch = { index = "pytorch-cu128" }
-torchvision = { index = "pytorch-cu128" }
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
 sam3 = { git = "https://github.com/facebookresearch/sam3", rev = "7f473cfd983d5eb43040ff608f66bff0d7bdcb53" }
 
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [build-system]

@@ -63,9 +63,10 @@
 ## Phase 2 — Point Cloud / 3DGS Rendering
 
 - [x] gsplat 導入（PyTorch/CUDAとの整合確認）#13
-- [ ] PLY/PCD・既存3DGSシーンのインポート #14
-- [ ] カメラ軌道設定と RGB/Depth/Pose 付きフレーム生成、MP4化 #15
-- [ ] 生成動画を Phase 1 パイプラインに投入 #15
+- [x] PLY・既存3DGSシーン・COLMAP のインポート #14（PCD は未対応）
+- [x] カメラ軌道設定と RGB/Depth/Pose 付きフレーム生成、MP4化 #15
+- [x] 生成動画を Phase 1 パイプラインに投入 #15
+- [ ] gsplat による 3DGS 学習ジョブ（8GB 向け）#18
 - [ ] 実画像 vs レンダリング画像の比較（PSNR/SSIM/LPIPS、IoU）#16
 
 ## Phase 3 — Text-to-3D Segmentation

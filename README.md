@@ -47,6 +47,10 @@ uv run streamlit run app.py
 
 GPU や重みが無い環境でも、セグメンタに `fake` を選べばパイプラインと UI を確認できる（結果はダミー）。
 
+**3D Rendering** ページでは、3DGS / 点群の PLY や COLMAP の sparse ディレクトリを指定し、オービットまたは
+撮影カメラの軌道に沿って描画する。結果（RGB / 深度 / 姿勢 / MP4）は `outputs/renders/<render_id>/` に保存され、
+「この動画を Video Segmentation で使う」で SAM 3.1 の入力にできる。
+
 ## テスト
 
 ```bash
@@ -57,7 +61,7 @@ uv run pytest
 
 ```text
 app.py                      トップページ（GPU 状態）
-pages/                      1: Video Segmentation, 4: Evaluation
+pages/                      1: Video Segmentation, 2: 3D Rendering, 4: Evaluation
 configs/model.yaml          モデル設定（repo / revision / 推論パラメータ）
 src/spatialsam/
   models/                   データ型・セグメンタ（SAM 3.1 / fake）・GPU・レジストリ
@@ -67,6 +71,7 @@ src/spatialsam/
   pipeline/                 推論・評価の一連の処理
   ui/                       Streamlit 共有状態
   samples/                  サンプル動画の生成（DAVIS 2017）
+  spatial/                  3DGS / 点群 / COLMAP の読み込み、gsplat 描画、カメラ軌道
 scripts/prepare_samples.py  サンプル動画と GT を samples/ に生成
 scripts/benchmark_samples.py  サンプルの一括推論・評価（CSV）
 configs/samples.yaml        サンプルのシーケンスとプロンプト例

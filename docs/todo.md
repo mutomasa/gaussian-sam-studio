@@ -67,7 +67,7 @@
 - [x] カメラ軌道設定と RGB/Depth/Pose 付きフレーム生成、MP4化 #15
 - [x] 生成動画を Phase 1 パイプラインに投入 #15
 - [x] gsplat による 3DGS 学習ジョブ（8GB 向け）#18
-- [ ] 実画像 vs レンダリング画像の比較（PSNR/SSIM/LPIPS、IoU）#16
+- [x] 実画像 vs レンダリング画像の比較（PSNR/SSIM/LPIPS、IoU）#16 → [render_vs_real.md](render_vs_real.md)
 
 ## Phase 3 — Text-to-3D Segmentation
 

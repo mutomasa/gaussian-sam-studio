@@ -13,6 +13,8 @@ sam31:
   # 画像エンコーダ・後処理に何フレームまとめて通すか。公式既定 16 は 8GB で OOM（#2）
   grounding_batch_size: 1
   postprocess_batch_size: 1
+  bf16_backbone: true          # 画像・テキストエンコーダだけ bf16（重み 3.7GB → 2.1GB）#4
+  offload_video_to_cpu: true   # デコード済みフレームを CPU メモリに置く #4
 
 outputs_dir: outputs
 max_upload_mib: 500

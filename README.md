@@ -17,13 +17,22 @@ hf auth login
 hf download facebook/sam3.1 --revision daa63191845a41281374e725f4c9e51c7a824460
 ```
 
+重みは `configs/model.yaml` の `sam31.source.revision` で固定したものを HF キャッシュから読む
+（`HF_HUB_OFFLINE=1` でも動く）。別の場所の重みを使うときは `sam31.checkpoint_path` を指定する。
+fine-grained トークンの場合は「public gated repos への読み取り」権限が必要。
+
 ## サンプル動画（GT 付き）
 
 ```bash
 uv run python scripts/prepare_samples.py   # DAVIS 2017 から samples/ に生成（CC BY-NC 4.0）
 ```
 
-詳細は [samples/README.md](samples/README.md)。
+詳細は [samples/README.md](samples/README.md)。全サンプルを一括で推論・評価するには:
+
+```bash
+uv run python scripts/benchmark_samples.py                 # → outputs/benchmarks/<日時>-sam3.1.csv
+uv run python scripts/benchmark_samples.py --fp32-backbone  # bf16 化の精度影響の比較用
+```
 
 ## 起動
 
@@ -54,6 +63,7 @@ src/spatialsam/
   ui/                       Streamlit 共有状態
   samples/                  サンプル動画の生成（DAVIS 2017）
 scripts/prepare_samples.py  サンプル動画と GT を samples/ に生成
+scripts/benchmark_samples.py  サンプルの一括推論・評価（CSV）
 configs/samples.yaml        サンプルのシーケンスとプロンプト例
 tests/                      pytest
 ```

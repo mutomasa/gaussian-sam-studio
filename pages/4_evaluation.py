@@ -8,10 +8,14 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from spatialsam.config import PROJECT_ROOT
 from spatialsam.evaluation.ground_truth import load_gt_dir, load_gt_zip
 from spatialsam.experiments.store import Experiment, ExperimentStore
 from spatialsam.pipeline.evaluation import EvaluationReport, evaluate_experiment
+from spatialsam.samples.davis import default_gt_dir
 from spatialsam.ui.state import LAST_EXPERIMENT_KEY, get_store
+
+SAMPLES_DIR = PROJECT_ROOT / "samples"
 
 
 def select_experiment(store: ExperimentStore) -> Experiment | None:
@@ -24,12 +28,14 @@ def select_experiment(store: ExperimentStore) -> Experiment | None:
     return store.open(st.selectbox("実験", ids, index=index))
 
 
-def load_ground_truth() -> dict | None:
+def load_ground_truth(experiment: Experiment) -> dict | None:
     st.caption("GT は PNG 連番（ファイル名末尾の数字 = 元動画のフレーム番号、画素値 > 0 が前景）")
     uploaded = st.file_uploader("GT マスク（PNG を含む zip）", type=["zip"])
     if uploaded is not None:
         return load_gt_zip(uploaded.getvalue())
-    directory = st.text_input("または GT ディレクトリのパス")
+    default = default_gt_dir(SAMPLES_DIR, experiment.load_metadata()["input"]["video"])
+    directory = st.text_input("または GT ディレクトリのパス（サンプル動画は自動入力）",
+                              value=str(default or ""), key=f"gt-dir-{experiment.id}")
     if directory and Path(directory).is_dir():
         return load_gt_dir(Path(directory))
     return None
@@ -68,7 +74,7 @@ def main() -> None:
     experiment = select_experiment(store)
     if experiment is None:
         return
-    gt_masks = load_ground_truth()
+    gt_masks = load_ground_truth(experiment)
     if st.button("評価を実行", type="primary", disabled=not gt_masks):
         try:
             show_report(evaluate_experiment(experiment, gt_masks))

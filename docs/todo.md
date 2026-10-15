@@ -54,7 +54,7 @@
 - [x] Streamlit トップページ（GPU状態表示）
 - [x] Tab 1: Video Segmentation（アップロード・プロンプト・推論設定・結果表示）
 - [x] Tab 4: Evaluation（GT取り込み・メトリクス表示・エクスポート）
-- [ ] GT付きサンプル動画の用意（DAVIS 2017 等）と `samples/README.md` #5
+- [x] GT付きサンプル動画の用意（DAVIS 2017 val の 7 シーケンス）と `samples/README.md` #5
 - [ ] 実機SAM 3.1で入力→推論→可視化の一連動作確認 #3
 
 ### テスト

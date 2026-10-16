@@ -91,6 +91,12 @@ def show_summary(experiment: Experiment) -> None:
     cols[2].metric("処理時間 [s]", f"{perf['elapsed_sec']:.1f}")
     cols[3].metric("Peak VRAM [MiB]", "—" if perf["peak_vram_mib"] is None else f"{perf['peak_vram_mib']:,.0f}")
     st.caption(f"実験 ID: `{experiment.id}` / プロンプト: `{meta['prompt']}` / モデル: `{meta['model']}`")
+    chunks = meta.get("segmenter_info", {})
+    if chunks.get("chunks", 1) > 1:
+        matched = sum(m["matched"] for m in chunks["matches"])
+        new = sum(m["new_ids"] for m in chunks["matches"])
+        st.info(f"{chunks['chunks']} チャンク（{chunks['chunk_size']} フレーム、重なり {chunks['overlap']}）に分けて推論し、"
+                f"境界で {matched} 件の物体 ID を引き継ぎました（新しく現れた物体 {new} 件）")
     if meta.get("oom_retries"):
         st.warning(f"GPU メモリ不足のため {len(meta['oom_retries'])} 回縮小して再実行しました"
                    f"（最終: {len(meta['frame_indices'])} フレーム）")

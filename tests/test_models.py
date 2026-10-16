@@ -179,3 +179,13 @@ def test_is_out_of_memory():
     assert is_out_of_memory(OutOfMemoryError("x"))
     assert is_out_of_memory(RuntimeError("CUDA out of memory. Tried to allocate 82.00 MiB"))
     assert not is_out_of_memory(ValueError("other"))
+
+
+def test_chunking_config_wraps_segmenter():
+    from spatialsam.models.chunking import ChunkedSegmenter
+
+    config = parse_config({"chunking": {"chunk_size": 50, "overlap": 5}})
+    assert config.chunking.chunk_size == 50 and config.chunking.match_iou == 0.3
+    segmenter = create_segmenter("fake", config)
+    assert isinstance(segmenter, ChunkedSegmenter) and segmenter.name == "fake"
+    assert parse_config({}).chunking is None

@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 
+from spatialsam.models.chunking import ChunkSettings
 from spatialsam.models.sam31_segmenter import Sam31Settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +28,7 @@ class AppConfig:
     default_segmenter: str = "fake"
     sam31: Sam31Settings = field(default_factory=Sam31Settings)
     sam31_source: ModelSource = field(default_factory=ModelSource)
+    chunking: ChunkSettings | None = None
     outputs_dir: Path = PROJECT_ROOT / "outputs"
     max_upload_mib: int = 500
 
@@ -43,6 +45,7 @@ def parse_config(raw: dict[str, Any], base: Path = PROJECT_ROOT) -> AppConfig:
         default_segmenter=raw.get("default_segmenter", "fake"),
         sam31=Sam31Settings(**sam),
         sam31_source=ModelSource(**source),
+        chunking=ChunkSettings(**raw["chunking"]) if raw.get("chunking") else None,
         outputs_dir=_resolve(raw.get("outputs_dir"), base),
         max_upload_mib=int(raw.get("max_upload_mib", 500)),
     )

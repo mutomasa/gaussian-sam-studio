@@ -213,6 +213,7 @@ Mip-NeRF 360 の bonsai を `data/bonsai` に置いた場合の手順です。�
 | `scripts/compare_render_vs_real.py` | 評価用視点で、実画像と 3D 描画を画質と SAM の結果で比べる |
 | `scripts/lift_masks.py` | SAM の 2D マスクを Gaussian に持ち上げる（`--compare` で評価も） |
 | `scripts/record_demo.py` | bonsai の一連の流れをデモ動画に録る |
+| `scripts/make_demo_gif.py` | デモ動画から見どころを切り出し、README 用の GIF を作る |
 
 ```bash
 # DAVIS サンプルの一括評価（bf16 化の影響を見るときは --fp32-backbone）

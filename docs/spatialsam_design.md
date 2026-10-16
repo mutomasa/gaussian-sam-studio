@@ -87,7 +87,7 @@ flowchart TD
 | Point Cloud / Scene | 3DGS PLY・点群（PLY / PCD / XYZ）・COLMAP の読み込み、点群の前処理（外れ値除去・ボクセル間引き）、点群 → 等方 Gaussian、対象の点群の書き出し | `spatial/gaussians.py`、`spatial/point_io.py`、`spatial/pointcloud.py`、`spatial/colmap.py`、`spatial/scene_source.py` | Open3D（点群）、plyfile（3DGS PLY）、SciPy（kNN） |
 | 3DGS Pipeline | 描画（RGB / 期待深度 / α / 特徴量）、カメラと軌道、学習 | `spatial/renderer.py`、`spatial/camera.py`、`spatial/trajectory.py`、`training/` | gsplat（JIT ビルド） |
 | Mask Lifting | 逆投影、Gaussian 中心の投影と可視判定、多視点投票、強調・抽出 | `spatial/mask_lifting.py`、`spatial/scene_highlight.py`、`pipeline/lifting.py` | NumPy |
-| Evaluation | IoU / Dice / 輪郭 F / J&F、PSNR / SSIM / LPIPS、再投影 IoU / 3D IoU | `evaluation/` | NumPy、PyTorch、lpips |
+| Evaluation | IoU / Dice / 輪郭 F / J&F、PSNR / SSIM / LPIPS、再投影 IoU / 3D IoU | `evaluation/` | TorchMetrics（IoU / Dice / PSNR / SSIM / LPIPS）、NumPy（輪郭 F、torch 無しでの IoU / Dice） |
 | Jobs | 別プロセスのジョブ（学習・比較）、状態ファイル、GPU 排他 | `jobs.py`、`training/jobs.py`、`pipeline/comparison_job.py` | subprocess |
 | Experiment Store | 入出力、設定、メトリクス、成果物の保存 | `experiments/`、`tracking.py` | ローカルの JSON / CSV / NPZ（正）と MLflow（Docker、一覧・比較用） |
 
@@ -311,7 +311,7 @@ gaussian-sam-studio/
 |---|---|---|---|
 | テキスト指定の動画セグメンテーション | **SAM 3.1 Object Multiplex**（Meta） | HF: `facebook/sam3.1`（承認制） | `sam3.1_multiplex.pt`（約 3.5GB）。公式 repo の `build_sam3_multiplex_video_predictor()` で読み込む |
 | 3DGS の学習・描画 | **gsplat 1.5.3** | PyPI（Apache-2.0） | MCMC 戦略、`packed=True` |
-| 画質の評価 | **LPIPS**（AlexNet） | PyPI `lpips`（BSD-2） | AlexNet の重みは torchvision から初回だけ取得 |
+| 評価指標 | **TorchMetrics**（LPIPS は AlexNet） | PyPI（Apache-2.0） | IoU / Dice / PSNR / SSIM / LPIPS。AlexNet の重みは torchvision から初回だけ取得 |
 
 **不要と判断した代替候補**:
 - SAM 3（`facebook/sam3`）と、Grounding DINO + SAM 2.1 は、SAM 3.1 が 8GB に収まったので実装していない。
@@ -402,7 +402,7 @@ gaussian-sam-studio/
 | 代替モデルへの切り替え（SAM 3 → Grounding DINO + SAM 2.1） | 実装しない | SAM 3.1 が 8GB に収まった |
 | Point Cloud は Open3D | 点群の読み書きと前処理は Open3D（#43）。3DGS の PLY は plyfile、近傍距離は SciPy | Open3D は 3DGS の属性（SH・不透明度など）を持つ PLY を扱えない。外れ値除去は bonsai の点群描画の画質を上げなかった（PSNR 10.49 → 10.46。外れ値は Gaussian の大きさの中央値での頭打ちで既に抑えている） |
 | Experiment Store は MLflow など | ローカルの JSON / CSV / NPZ（`experiments/`） | オフライン・ローカルで完結させ、画面から直接読むため |
-| 評価は TorchMetrics など | 自前実装（NumPy / PyTorch）と lpips | 定義（和集合、輪郭の許容距離など）を明示して管理するため |
+| 評価は TorchMetrics など | TorchMetrics（IoU / Dice / PSNR / SSIM / LPIPS、#41）。輪郭 F だけ自前 | 輪郭 F（DAVIS の境界一致）は TorchMetrics に該当が無い。SSIM は端の扱いが学習の損失と違い、評価値がわずかに下がる |
 | 2D→3D は逆投影して点を融合 | Gaussian の中心を投影し、可視性つきで投票（逆投影も実装） | 3DGS の Gaussian に直接ラベルを付け、遮蔽を扱えるため |
 | ジョブキューで直列化 | 別プロセスのジョブと GPU 排他のチェック | 同時に動くのは 1 つで十分。状態をファイルで共有でき、Streamlit を止めても続く |
 | 3DGS の学習は「必要に応じて」 | 学習ジョブを実装（MCMC） | 既存の学習済みシーンの品質が低く、比較と持ち上げに使えなかった |

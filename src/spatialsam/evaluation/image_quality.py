@@ -1,7 +1,9 @@
-"""描画画像の画質指標（実画像との PSNR / SSIM / LPIPS）。
+"""描画画像の画質指標（実画像との PSNR / SSIM / LPIPS）。TorchMetrics で計算する #41。
 
-PSNR・SSIM は学習と同じ実装（training/losses.py）を使い、学習時の評価値と比べられるようにする。
-LPIPS は 3DGS 論文と同じく AlexNet 版（値が小さいほど似ている）。
+- PSNR: 値域 [0, 1]
+- SSIM: 11x11 ガウス窓、σ=1.5（3DGS 論文と同じ窓）。画像の端は窓が収まる範囲だけで平均する（TorchMetrics の標準）。
+  学習の損失（training/losses.py）はゼロ詰めの 3DGS 実装のままなので、値はわずかに違う（bonsai で約 0.0014 低い）
+- LPIPS: AlexNet 版（値が小さいほど似ている）。lpips パッケージと同じ重みで、値も一致する
 """
 
 from __future__ import annotations
@@ -10,6 +12,9 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 import numpy as np
+
+SSIM_KERNEL = 11
+SSIM_SIGMA = 1.5
 
 
 @dataclass(frozen=True)
@@ -32,6 +37,28 @@ def summarize_quality(scores: list[QualityScore]) -> dict[str, float]:
     return summary
 
 
+def to_nchw(image):
+    """[H, W, 3]（値域 [0, 1] の torch.Tensor）→ [1, 3, H, W]。"""
+    return image.permute(2, 0, 1)[None]
+
+
+def psnr(rendered, target) -> float:
+    """画像は [H, W, 3]、値域 [0, 1] の torch.Tensor。完全一致は inf。"""
+    import torch
+    from torchmetrics.functional.image import peak_signal_noise_ratio
+
+    if torch.equal(rendered, target):
+        return float("inf")
+    return float(peak_signal_noise_ratio(to_nchw(rendered), to_nchw(target), data_range=1.0))
+
+
+def ssim(rendered, target) -> float:
+    from torchmetrics.functional.image import structural_similarity_index_measure
+
+    return float(structural_similarity_index_measure(to_nchw(rendered), to_nchw(target), data_range=1.0,
+                                                     kernel_size=SSIM_KERNEL, sigma=SSIM_SIGMA))
+
+
 class ImageQualityScorer:
     """画像は [H, W, 3] uint8 RGB。LPIPS のモデルは最初の呼び出しで一度だけ読み込む。"""
 
@@ -47,22 +74,20 @@ class ImageQualityScorer:
 
     def _lpips_model(self):
         if self._lpips is None:
-            import lpips
+            from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
-            self._lpips = lpips.LPIPS(net="alex", verbose=False).to(self.device).eval()
+            # normalize=True で [0, 1] の入力を受ける（内部で [-1, 1] にする）
+            self._lpips = LearnedPerceptualImagePatchSimilarity("alex", normalize=True).to(self.device).eval()
         return self._lpips
 
     def lpips(self, rendered, target) -> float:
         import torch
 
-        to_nchw = lambda t: t.permute(2, 0, 1)[None] * 2 - 1  # noqa: E731 — LPIPS は [-1, 1]
         with torch.no_grad():
-            return float(self._lpips_model()(to_nchw(rendered), to_nchw(target)).item())
+            return float(self._lpips_model()(to_nchw(rendered), to_nchw(target)))
 
     def score(self, rendered: np.ndarray, target: np.ndarray) -> QualityScore:
-        from spatialsam.training.losses import psnr, ssim
-
         if rendered.shape != target.shape:
             raise ValueError(f"画像サイズが違います: {rendered.shape} と {target.shape}")
         a, b = self._tensor(rendered), self._tensor(target)
-        return QualityScore(psnr(a, b), float(ssim(a, b).item()), self.lpips(a, b) if self.use_lpips else None)
+        return QualityScore(psnr(a, b), ssim(a, b), self.lpips(a, b) if self.use_lpips else None)

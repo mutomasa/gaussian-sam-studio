@@ -50,8 +50,8 @@ gpu = [
     "nvidia-nvvm==13.0.88",
     "nvidia-cuda-crt==13.0.88",
     "plyfile>=1.0",
-    # 画質指標 LPIPS（BSD-2。線形層の重みは同梱、AlexNet は torchvision の ImageNet 重みを初回に取得）#16
-    "lpips==0.1.4",
+    # 評価指標（IoU / Dice / PSNR / SSIM / LPIPS）#41。LPIPS の AlexNet 重みは torchvision から初回に取得
+    "torchmetrics==1.9.0",
 ]
 
 [tool.uv]

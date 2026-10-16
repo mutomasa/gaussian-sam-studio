@@ -576,7 +576,7 @@ $$
 
 ### 6.6 画質指標（PSNR / SSIM / LPIPS）
 
-実装は `src/spatialsam/evaluation/image_quality.py`。PSNR と SSIM は学習と同じ実装（`training/losses.py`）を使い、学習時の評価値と比べられるようにしている。
+実装は `src/spatialsam/evaluation/image_quality.py` で、3 つとも **TorchMetrics** で計算する（学習時の評価用視点の評価 `Trainer.evaluate` も同じ）。
 いずれも評価用視点（学習に使っていない）で、描画画像と実画像を比べてから視点平均を取る。
 
 **PSNR**（値域 $[0,1]$、MSE は全画素・全チャンネルの平均）:
@@ -586,7 +586,8 @@ $$
 \mathrm{MSE} = \frac{1}{3HW}\sum_{\mathbf{p}, c} \bigl(\hat{I}_c(\mathbf{p}) - I_c(\mathbf{p})\bigr)^2
 $$
 
-**SSIM**: §6.3 と同じ。
+**SSIM**: 窓は §6.3 と同じ（11×11 ガウス、$\sigma=1.5$）だが、TorchMetrics は**窓が画像に収まる範囲だけ**で平均する。
+学習の損失はゼロ詰めの 3DGS 実装なので、評価の値はわずかに低くなる（bonsai の 3DGS で 0.9432 → 0.9421）。
 
 **LPIPS**（Zhang et al. 2018）: 学習済みネットワーク（3DGS 論文と同じ AlexNet 版）の各層の特徴を比べる知覚的な距離で、**小さいほど似ている**。
 入力は $[-1, 1]$ に変換する。層 $l$ の特徴をチャンネル方向に正規化したもの $\hat{y}^l$、学習済みの重み $\mathbf{w}_l$ を使って
@@ -595,7 +596,9 @@ $$
 \mathrm{LPIPS}(x, x_0) = \sum_{l} \frac{1}{H_l W_l} \sum_{h, w} \left\lVert \mathbf{w}_l \odot \bigl(\hat{y}^l_{hw} - \hat{y}^l_{0,hw}\bigr) \right\rVert_2^2
 $$
 
-である（`lpips.LPIPS(net="alex")`）。
+である（`torchmetrics.image.lpip.LearnedPerceptualImagePatchSimilarity("alex", normalize=True)`。`lpips` パッケージと同じ重みで、値も一致する）。
+
+2D の IoU と Dice（§4）も TorchMetrics（`binary_jaccard_index` / `binary_f1_score`、空同士は 1.0）で計算する。torch の無い環境では同じ定義の NumPy 実装を使う。輪郭 F は TorchMetrics に該当が無いので自前で計算する。
 
 ---
 

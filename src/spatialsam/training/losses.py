@@ -1,4 +1,9 @@
-"""学習の損失と画質指標（torch。画像は [H, W, 3] で値域 [0, 1]）。"""
+"""学習の損失（torch。画像は [H, W, 3] で値域 [0, 1]）。
+
+SSIM は 3DGS（INRIA 実装）と同じゼロ詰めの 11x11 ガウス窓で、損失として微分する。
+評価の PSNR / SSIM / LPIPS は evaluation/image_quality.py（TorchMetrics）で測る。
+ここの psnr は学習中の進捗表示用。
+"""
 
 from __future__ import annotations
 

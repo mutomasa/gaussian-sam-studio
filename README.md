@@ -321,7 +321,7 @@ configs/                       model.yaml（モデルと推論の設定）、sam
 src/spatialsam/
   models/                      セグメンタ（SAM 3.1 / fake）、チャンク分割、重みの解決、GPU 計測、モデルの保持
   video/                       動画の読み書き、マスクの重畳、深度の可視化、アップロードの検査
-  evaluation/                  IoU / Dice / 輪郭 F / J&F、画質（PSNR / SSIM / LPIPS）、3D の評価
+  evaluation/                  IoU / Dice / 輪郭 F / J&F、画質（PSNR / SSIM / LPIPS）、3D の評価（TorchMetrics を使用）
   experiments/                 実験・描画・比較・3D セグメンテーションの保存
   pipeline/                    推論・評価・描画・比較・持ち上げの一連の処理、比較ジョブ
   spatial/                     3DGS / 点群 / COLMAP の読み込み、gsplat の描画、カメラと軌道、持ち上げ
@@ -359,7 +359,7 @@ uv run pytest            # 単体テスト（GPU があれば gsplat を使う�
 - **SAM 3.1 の重み**: [SAM License](https://huggingface.co/facebook/sam3.1)。利用には Hugging Face での承認が必要です。
 - **DAVIS 2017**: CC BY-NC 4.0（非商用）。動画も正解マスクもリポジトリには含めず、`prepare_samples.py` で手元に作ります。
 - **Mip-NeRF 360**: リポジトリには含めません。利用条件は公式ページで確認してください。
-- **主な依存**: gsplat（Apache-2.0）、LPIPS（BSD-2）、Playwright（Apache-2.0）。
+- **主な依存**: gsplat（Apache-2.0）、TorchMetrics（Apache-2.0）、Playwright（Apache-2.0）。
 - このリポジトリのコード自体のライセンスはまだ決めていません。
 
 ---

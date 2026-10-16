@@ -18,7 +18,8 @@ import torch
 from spatialsam.spatial.gaussians import GaussianScene
 from spatialsam.spatial.pointcloud import logit, neighbor_distances, rgb_to_sh0
 from spatialsam.training.dataset import ColmapDataset, TrainView
-from spatialsam.training.losses import photometric_loss, psnr, ssim
+from spatialsam.evaluation import image_quality as quality
+from spatialsam.training.losses import photometric_loss, psnr
 
 
 @dataclass(frozen=True)
@@ -167,7 +168,7 @@ class Trainer:
 
     @torch.no_grad()
     def evaluate(self, views: list[TrainView]) -> dict[str, float]:
-        """評価用視点（学習に使っていない）の PSNR / SSIM の平均。"""
+        """評価用視点（学習に使っていない）の PSNR / SSIM の平均。比較（#16）と同じく TorchMetrics で測る。"""
         if not views:
             return {}
         scores = [self._score(view) for view in views]
@@ -177,7 +178,7 @@ class Trainer:
     def _score(self, view: TrainView) -> tuple[float, float]:
         rendered, _ = self.render(view, self.config.sh_degree)
         target = to_device_image(view.image, self.device)
-        return psnr(rendered, target), ssim(rendered, target).item()
+        return quality.psnr(rendered, target), quality.ssim(rendered, target)
 
     def export(self) -> GaussianScene:
         return export_scene(self.params)

@@ -838,24 +838,27 @@ $$
 | `pages/1_video_segmentation.py` | 動画 + テキストプロンプト → SAM 3.1 → マスク重畳動画 | `pipeline/segmentation.py`, `models/`（`factory.py`, `registry.py`, `sam31_segmenter.py`, `chunking.py`）, `video/` |
 | `pages/2_3d_rendering.py` | PLY / COLMAP を軌道に沿って描画（RGB / 深度 / 姿勢 / MP4）、3DGS 学習の起動 | `pipeline/rendering.py`, `spatial/`, `ui/training_panel.py`, `training/jobs.py` |
 | `pages/3_3d_segmentation.py` | 2D マスクの持ち上げ、強調表示・抽出、評価用視点での評価 | `pipeline/lifting.py`, `spatial/mask_lifting.py`, `spatial/scene_highlight.py`, `evaluation/geometry.py` |
-| `pages/4_evaluation.py` | GT との比較（J&F など）、実画像 vs 3D 描画の比較結果の表示、実験一覧 | `pipeline/evaluation.py`, `evaluation/`, `experiments/` |
+| `pages/4_evaluation.py` | GT との比較（J&F など）、実画像 vs 3D 描画の比較の実行と結果の表示、実験一覧 | `pipeline/evaluation.py`, `pipeline/comparison_job.py`, `ui/comparison_panel.py`, `evaluation/`, `experiments/` |
 
 結果はすべて `outputs/` 以下に保存する（SAM の実験 `outputs/<experiment_id>/`、描画 `outputs/renders/<render_id>/`、学習 `outputs/training/<job_id>/` など。`experiments/` のストア）。
-CLI（`scripts/`）からも同じパイプラインを呼べる。実画像 vs 3D 描画の比較（`pipeline/comparison.py`）は `scripts/compare_render_vs_real.py` から実行し、結果を Evaluation ページで見る。
+CLI（`scripts/`）からも同じパイプラインを呼べる。実画像 vs 3D 描画の比較（`pipeline/comparison.py`）は Evaluation ページから別プロセスのジョブとして実行できるほか、`scripts/compare_render_vs_real.py` からも実行できる。`scripts/record_demo.py` は bonsai の全体の流れを Playwright でデモ動画に録る。
 
-### 9.2 別プロセスの学習ジョブ
+### 9.2 別プロセスのジョブ（3DGS 学習・実画像 vs 3D 描画の比較）
 
-3DGS の学習は数分〜数十分かかるので、Streamlit とは**別プロセス**で動かす（`src/spatialsam/training/jobs.py`、入口は `training/run_job.py`）。
+3DGS の学習（数分〜数十分）と比較（SAM を「(シーン数 + 1) × プロンプト数」回実行するので数分）は、Streamlit とは**別プロセス**で動かす。
+共通部分は `src/spatialsam/jobs.py`（`BackgroundJob` / `JobStore` / `launch` / `run_job_main`）で、学習は `training/jobs.py`（入口 `training/run_job.py`）、比較は `pipeline/comparison_job.py` がこれを使う。
 
-- `subprocess.Popen([... "-m", "spatialsam.training.run_job", <job_dir>], start_new_session=True)` で起動するので、Streamlit の再実行やタブを閉じても止まらない。
-- UI とはファイルで状態を受け渡す: `request.json`（入力と設定）、`status.json`（queued / running / done / failed、PID、進捗、Peak VRAM）、`train.log`、`point_cloud.ply`、`metrics.json`（評価用視点の PSNR / SSIM）。
+- `subprocess.Popen([... "-m", <入口のモジュール>, <job_dir>], start_new_session=True)` で起動するので、Streamlit の再実行やタブを閉じても止まらない。
+- UI とはファイルで状態を受け渡す: `request.json`（入力と設定）、`status.json`（queued / running / done / failed、PID、進捗、メッセージ）、ログ。学習は `point_cloud.ply` と `metrics.json`（評価用視点の PSNR / SSIM）、比較は `status.json` の `comparison_id`（結果は `outputs/comparisons/<id>/`）を残す。
+- 比較の進捗は「描画するシーン数 + SAM の実行回数」を全体として、各段階の開始ごとに 1 つ進める。
+- UI は `st.fragment(run_every=2)` で 2 秒ごとに `status.json` を読み直す。
 - `status.json` は一時ファイルに書いてから `os.replace` で置き換え、UI が書きかけのファイルを読まないようにする（`write_json_atomic`）。
 - 「running のまま異常終了した」ジョブを実行中と誤認しないよう、`os.kill(pid, 0)` でプロセスの生存も確かめる（`pid_alive`）。
 
 ### 9.3 GPU の排他（8GB VRAM の運用）
 
 - **モデルは同時に 1 つだけ GPU に載せる**（`models/registry.py` の `ModelRegistry`）。別のモデルを読む前に解放し、`torch.cuda.empty_cache()` する。
-- **学習と SAM を同時に動かさない**: 学習を始めるときに SAM のモデルを解放し（`ui/training_panel.py`）、学習中は Video Segmentation の推論を止める（`pages/1_video_segmentation.py`）。学習中は新しい学習も始められない。
+- **学習・比較・SAM を同時に動かさない**: ジョブを始めるときに UI プロセスの SAM を解放する（`ui/training_panel.py`、`ui/comparison_panel.py`）。GPU を使うジョブが動いている間（`jobs.active_gpu_jobs`）は、Video Segmentation の推論も、新しい学習・比較も始められない。
 - 比較処理では、ソースごとに描画が終わるたびにレンダラを破棄してキャッシュを解放してから SAM を動かす（`pipeline/comparison.py`）。
 
 ### 9.4 ローカル実行とオープンウェイト

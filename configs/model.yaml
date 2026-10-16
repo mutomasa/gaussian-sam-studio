@@ -5,7 +5,7 @@ sam31:
   source:
     repo_id: facebook/sam3.1
     revision: daa63191845a41281374e725f4c9e51c7a824460
-  # null なら sam3 が HF キャッシュから取得する。オフライン運用ではローカルパスを指定
+  # null なら上の revision の重みを HF キャッシュから読む（未取得ならダウンロード）。別の場所の重みはパスで指定
   checkpoint_path: null
   max_num_objects: 16
   use_fa3: false        # RTX A1000 (Ampere) は FlashAttention 3 非対応
@@ -15,6 +15,13 @@ sam31:
   postprocess_batch_size: 1
   bf16_backbone: true          # 画像・テキストエンコーダだけ bf16（重み 3.7GB → 2.1GB）#4
   offload_video_to_cpu: true   # デコード済みフレームを CPU メモリに置く #4
+
+# 長い動画をチャンクに分けて推論し、重なりフレームのマスク IoU で物体 ID をつなぐ #9
+# chunk_size 以下の動画は分割しない。null で無効
+chunking:
+  chunk_size: 200   # 1 チャンクのフレーム数（480p で Peak VRAM 約 5GB）
+  overlap: 48       # 隣り合うチャンクの重なり。SAM 3.1 は新しいセッションで物体を出すまで数〜数十フレームかかるので長めに
+  match_iou: 0.3    # 重なりでの IoU がこれ未満なら別物体として新しい ID を振る
 
 outputs_dir: outputs
 max_upload_mib: 500

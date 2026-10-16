@@ -7,6 +7,7 @@ from typing import Any
 
 from spatialsam.config import AppConfig
 from spatialsam.models.checkpoint import resolve_checkpoint
+from spatialsam.models.chunking import ChunkedSegmenter
 from spatialsam.models.fake_segmenter import FakeSegmenter
 from spatialsam.models.sam31_segmenter import Sam31Segmenter, Sam31Settings, build_sam31_predictor
 from spatialsam.models.segmenter import VideoSegmenter
@@ -25,9 +26,15 @@ def pinned_sam31_factory(config: AppConfig):
     return build
 
 
-def create_segmenter(name: str, config: AppConfig) -> VideoSegmenter:
+def create_base_segmenter(name: str, config: AppConfig) -> VideoSegmenter:
     if name == "sam3.1":
         return Sam31Segmenter(config.sam31, pinned_sam31_factory(config))
     if name == "fake":
         return FakeSegmenter()
     raise ValueError(f"未知のセグメンタ: {name}（候補: {', '.join(SEGMENTER_NAMES)}）")
+
+
+def create_segmenter(name: str, config: AppConfig) -> VideoSegmenter:
+    """設定でチャンク分割が有効なら、長い動画を分割して推論するよう包む。"""
+    segmenter = create_base_segmenter(name, config)
+    return ChunkedSegmenter(segmenter, config.chunking) if config.chunking else segmenter

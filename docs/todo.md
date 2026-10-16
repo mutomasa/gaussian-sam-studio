@@ -34,7 +34,7 @@
 - [x] `Sam31Segmenter` を実機で動作確認 #3
 - [x] 画像エンコーダのバッチサイズを 16 → 1 に変更（8GB で OOM するため）#2
 - [x] backbone の bf16 化・フレームの CPU オフロード・OOM時の自動リトライ #4
-- [ ] 長尺動画のチャンク分割（チャンク間の物体ID継続）#9
+- [x] 長尺動画のチャンク分割（チャンク間の物体ID継続）#9 → [benchmark_sam31.md](benchmark_sam31.md)
 
 ### 評価
 - [x] IoU / Dice

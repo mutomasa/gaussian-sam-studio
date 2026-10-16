@@ -68,6 +68,7 @@ def build_metadata(job: SegmentationJob, segmenter: VideoSegmenter, run: Inferen
         "sampling": asdict(run.sampling),
         "requested_sampling": asdict(job.sampling),
         "oom_retries": run.oom_attempts,
+        "segmenter_info": getattr(segmenter, "info", {}),  # チャンク分割の情報など
         "frame_indices": run.indices,
         "object_ids": run.result.object_ids(),
         "performance": {

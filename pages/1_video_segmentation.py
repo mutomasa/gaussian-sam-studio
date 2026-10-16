@@ -12,7 +12,7 @@ import streamlit as st
 from spatialsam.config import PROJECT_ROOT, AppConfig
 from spatialsam.experiments.renders import RenderStore
 from spatialsam.experiments.store import Experiment
-from spatialsam.training.jobs import TrainingStore
+from spatialsam.jobs import active_gpu_jobs
 from spatialsam.models.factory import SEGMENTER_NAMES, create_segmenter
 from spatialsam.pipeline.segmentation import SegmentationJob, run_segmentation
 from spatialsam.samples.davis import load_manifest
@@ -136,10 +136,11 @@ def main() -> None:
         return
     prompt = st.text_input("テキストプロンプト", value=suggested_prompt(video), placeholder="例: robot gripper",
                            key=f"prompt-{video}")
-    training = TrainingStore(config.outputs_dir).active_jobs()
-    if training:
-        st.warning(f"3DGS の学習中です（{training[0].id}）。GPU メモリが足りなくなるため、終わるまで推論できません")
-    if st.button("推論を実行", type="primary", disabled=video is None or not prompt.strip() or bool(training)):
+    busy = active_gpu_jobs(config.outputs_dir)
+    if busy:
+        st.warning(f"GPU を使うジョブ（3DGS 学習・比較）が実行中です（{busy[0].id}）。"
+                   "GPU メモリが足りなくなるため、終わるまで推論できません")
+    if st.button("推論を実行", type="primary", disabled=video is None or not prompt.strip() or bool(busy)):
         try:
             experiment = run(video, prompt.strip(), segmenter_name, sampling, config)
         except Exception as error:  # noqa: BLE001 — UIでは失敗内容を表示して継続する

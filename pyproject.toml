@@ -17,7 +17,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = [
+    "pytest>=8.0",
+    # デモ動画の録画（scripts/record_demo.py）。ブラウザはシステムの Google Chrome を使う
+    "playwright==1.64.0",
+]
 # ローカルGPU推論用。既定で入る（GPU 無し環境は `uv sync --no-group gpu`）
 gpu = [
     "torch==2.10.0",

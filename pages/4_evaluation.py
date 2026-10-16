@@ -15,6 +15,7 @@ from spatialsam.experiments.comparisons import REAL, Comparison, ComparisonStore
 from spatialsam.experiments.store import Experiment, ExperimentStore
 from spatialsam.pipeline.evaluation import EvaluationReport, evaluate_experiment
 from spatialsam.samples.davis import default_gt_dir
+from spatialsam.ui.comparison_panel import COMPARISON_RESULT_KEY, run_panel
 from spatialsam.ui.state import LAST_EXPERIMENT_KEY, get_config, get_store
 from spatialsam.video.overlay import overlay_masks
 
@@ -113,12 +114,13 @@ def show_comparison(comparison: Comparison, store: ExperimentStore) -> None:
 
 
 def comparison_panel(store: ExperimentStore) -> None:
+    run_panel()
     comparisons = ComparisonStore(get_config().outputs_dir)
     ids = comparisons.list_ids()
     if not ids:
-        st.info("`scripts/compare_render_vs_real.py` で実画像と 3D 描画を比較できます")
+        st.info("上の「比較を実行する」から実画像と 3D 描画を比較できます")
         return
-    show_comparison(comparisons.open(st.selectbox("比較結果", ids)), store)
+    show_comparison(comparisons.open(st.selectbox("比較結果", ids, key=COMPARISON_RESULT_KEY)), store)
 
 
 def main() -> None:

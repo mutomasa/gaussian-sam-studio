@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import os
 import sys
-import traceback
 from dataclasses import asdict
 from pathlib import Path
 
+from spatialsam.jobs import run_job_main
 from spatialsam.spatial.colmap import read_points3d
 from spatialsam.spatial.gaussians import save_ply
-from spatialsam.training.jobs import DONE, FAILED, RUNNING, TrainingJob, write_json_atomic
+from spatialsam.training.jobs import DONE, RUNNING, TrainingJob, write_json_atomic
 
 
 def run(job: TrainingJob) -> None:
@@ -46,14 +46,7 @@ def run(job: TrainingJob) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    job = TrainingJob(Path((argv or sys.argv[1:])[0]))
-    try:
-        run(job)
-    except Exception as error:  # noqa: BLE001 — 失敗内容を UI に伝えて終了する
-        traceback.print_exc()
-        job.update_status(state=FAILED, message=f"{type(error).__name__}: {error}")
-        return 1
-    return 0
+    return run_job_main(TrainingJob(Path((argv or sys.argv[1:])[0])), run)
 
 
 if __name__ == "__main__":

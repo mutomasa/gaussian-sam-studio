@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from spatialsam.jobs import active_gpu_jobs
 from spatialsam.training.jobs import DONE, FAILED, TrainingJob, TrainingStore, TrainRequest, launch
 from spatialsam.ui.state import get_config, get_registry
 
@@ -79,7 +80,7 @@ def show_job(job: TrainingJob) -> None:
     else:
         st.info(status.get("message", ""))
     with st.expander("ログ"):
-        st.code(job.log_path.read_text(encoding="utf-8")[-4000:] if job.log_path.exists() else "")
+        st.code(job.log_tail())
 
 
 def jobs_table(store: TrainingStore) -> pd.DataFrame:
@@ -99,11 +100,11 @@ def live_status(job_id: str) -> None:
 
 def training_panel(gpu_available: bool) -> None:
     store = training_store()
-    active = store.active_jobs()
+    active = active_gpu_jobs(get_config().outputs_dir)
     st.caption("学習は別プロセスで動くので、ページを離れても続きます。学習中は SAM 3.1 の推論を止めます。")
     request = request_form()
     if active:
-        st.warning(f"学習中のジョブがあります: {active[0].id}")
+        st.warning(f"GPU を使うジョブ（学習・比較）が実行中です: {active[0].id}")
     if st.button("学習を開始", type="primary", disabled=request is None or bool(active) or not gpu_available):
         st.session_state["last_training_id"] = start(request).id
         st.rerun()  # 実行中の判定（開始ボタンの無効化・警告）をすぐ反映して二重起動を防ぐ

@@ -2,6 +2,9 @@
 
 前景は「全物体マスクの和集合」と GT 前景の比較とする（物体ID対応は扱わない）。
 輪郭Fの許容距離は DAVIS と同様に画像対角長の 0.008 倍。
+
+IoU / Dice は TorchMetrics（binary Jaccard / F1）で計算する #41。GPU 無しの環境（torch が無い）では
+同じ定義の NumPy 実装を使う。どちらも空同士は 1.0。輪郭 F は TorchMetrics に該当が無いので自前で計算する。
 """
 
 from __future__ import annotations
@@ -31,14 +34,45 @@ def _ratio(numerator: int, denominator: int, empty: float = 1.0) -> float:
     return empty if denominator == 0 else numerator / denominator
 
 
-def iou(pred: np.ndarray, gt: np.ndarray) -> float:
+def _classification_metrics():
+    """torchmetrics.functional.classification。torch が無ければ None。"""
+    try:
+        import torchmetrics.functional.classification as metrics
+    except ImportError:
+        return None
+    return metrics
+
+
+def _as_tensors(pred: np.ndarray, gt: np.ndarray):
+    import torch
+
+    return torch.as_tensor(np.ascontiguousarray(pred), dtype=torch.int8), torch.as_tensor(
+        np.ascontiguousarray(gt), dtype=torch.int8)
+
+
+def iou_numpy(pred: np.ndarray, gt: np.ndarray) -> float:
     pred, gt = pred.astype(bool), gt.astype(bool)
     return _ratio(int((pred & gt).sum()), int((pred | gt).sum()))
 
 
-def dice(pred: np.ndarray, gt: np.ndarray) -> float:
+def dice_numpy(pred: np.ndarray, gt: np.ndarray) -> float:
     pred, gt = pred.astype(bool), gt.astype(bool)
     return _ratio(2 * int((pred & gt).sum()), int(pred.sum() + gt.sum()))
+
+
+def iou(pred: np.ndarray, gt: np.ndarray) -> float:
+    metrics = _classification_metrics()
+    if metrics is None:
+        return iou_numpy(pred, gt)
+    return float(metrics.binary_jaccard_index(*_as_tensors(pred, gt), zero_division=1.0))
+
+
+def dice(pred: np.ndarray, gt: np.ndarray) -> float:
+    """2 値の Dice は F1 と同じ。"""
+    metrics = _classification_metrics()
+    if metrics is None:
+        return dice_numpy(pred, gt)
+    return float(metrics.binary_f1_score(*_as_tensors(pred, gt), zero_division=1.0))
 
 
 def boundary_map(mask: np.ndarray) -> np.ndarray:

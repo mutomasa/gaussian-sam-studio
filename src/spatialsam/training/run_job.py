@@ -10,6 +10,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from spatialsam.experiments.tracking_records import record_training
 from spatialsam.jobs import run_job_main
 from spatialsam.spatial.colmap import read_points3d
 from spatialsam.spatial.gaussians import save_ply
@@ -31,9 +32,12 @@ def run(job: TrainingJob) -> None:
     torch.cuda.reset_peak_memory_stats()
     trainer = Trainer(dataset, points.xyz, points.rgb, config)
 
+    history: list[dict] = []
+
     def report(progress: TrainProgress) -> None:
         peak = torch.cuda.max_memory_allocated() / 2**20
-        job.update_status(progress=asdict(progress) | {"peak_vram_mib": peak}, message="学習中")
+        history.append(asdict(progress) | {"peak_vram_mib": peak})
+        job.update_status(progress=history[-1], message="学習中")
         print(f"step {progress.step}/{progress.total} loss {progress.loss:.4f} psnr {progress.psnr:.2f} "
               f"gaussians {progress.num_gaussians} peak {peak:.0f}MiB", flush=True)
 
@@ -43,6 +47,7 @@ def run(job: TrainingJob) -> None:
     save_ply(trainer.export(), job.ply_path)
     write_json_atomic(job.root / "metrics.json", metrics)
     job.update_status(state=DONE, message="完了", peak_vram_mib=torch.cuda.max_memory_allocated() / 2**20)
+    record_training(job, config.to_dict(), history, metrics)
 
 
 def main(argv: list[str] | None = None) -> int:

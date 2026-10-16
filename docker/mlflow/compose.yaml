@@ -1,0 +1,27 @@
+# SpatialSAM Studio の実験を記録する MLflow トラッキングサーバー #45
+#
+#   docker compose -f docker/mlflow/compose.yaml up -d     # 起動（http://127.0.0.1:5000）
+#   docker compose -f docker/mlflow/compose.yaml down      # 停止（記録はボリュームに残る）
+#
+# - ローカルだけで待ち受ける（127.0.0.1）。データを外部に送らない方針のため
+# - 記録（SQLite）と成果物は名前付きボリューム spatialsam-mlflow に置く
+# - クライアント（mlflow-skinny）と同じ 3.17.1 に固定する
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.17.1
+    container_name: spatialsam-mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      --allowed-hosts "localhost:*,127.0.0.1:*"
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - spatialsam-mlflow:/mlflow
+    restart: unless-stopped
+
+volumes:
+  spatialsam-mlflow:

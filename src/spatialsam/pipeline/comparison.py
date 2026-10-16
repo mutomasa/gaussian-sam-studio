@@ -23,6 +23,7 @@ from spatialsam.evaluation.image_quality import QualityScore, summarize_quality
 from spatialsam.evaluation.segmentation import iou
 from spatialsam.experiments.comparisons import REAL, Comparison, ComparisonStore
 from spatialsam.experiments.store import Experiment, ExperimentStore
+from spatialsam.experiments.tracking_records import record_comparison
 from spatialsam.models.gpu import empty_cuda_cache
 from spatialsam.models.segmenter import VideoSegmenter
 from spatialsam.pipeline.evaluation import inference_frame_shape, predicted_foreground
@@ -158,6 +159,7 @@ def run_comparison(job: ComparisonJob, store: ComparisonStore, experiments: Expe
                                             experiments, progress)
     comparison.save_table("masks", masks)
     comparison.save_summary(build_summary(job, quality, masks, experiment_ids))
+    record_comparison(comparison)
     return comparison
 
 

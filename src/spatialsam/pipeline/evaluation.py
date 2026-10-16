@@ -10,6 +10,7 @@ import numpy as np
 from spatialsam.evaluation.ground_truth import align_mask
 from spatialsam.evaluation.segmentation import FrameScore, evaluate_frame, summarize
 from spatialsam.experiments.store import Experiment
+from spatialsam.experiments.tracking_records import record_evaluation
 from spatialsam.models.types import FrameMasks, SegmentationResult
 from spatialsam.video.io import list_frame_files
 
@@ -53,4 +54,5 @@ def evaluate_experiment(experiment: Experiment, gt_masks: dict[int, np.ndarray])
         [i for i in frame_indices if i not in gt_masks],
     )
     experiment.save_evaluation(report.summary, report.frame_scores)
+    record_evaluation(experiment, report.summary)
     return report

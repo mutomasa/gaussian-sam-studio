@@ -1,5 +1,6 @@
 """bonsai の全体の流れ（3DGS → 描画 → SAM 3.1 → 3D セグメンテーション → 評価）をデモ動画に録る。
 
+    uv run playwright install ffmpeg   # 初回だけ（Playwright の録画用 ffmpeg）
     uv run python scripts/record_demo.py [--out outputs/demo/bonsai_demo.mp4] [--keep-app]
 
 - Streamlit をこのスクリプトが起動・終了する（ポート 8599）。ブラウザはシステムの Google Chrome
@@ -204,18 +205,21 @@ def evaluation_step(rec: Recorder) -> None:
     slider = page.get_by_role("slider", name="視点")
     rec.move_to(slider)
     slider.focus()
+    page.get_by_role("button", name="Fullscreen: real").scroll_into_view_if_needed()  # 3 ソースの画像を画面に入れる
+    rec.pause(1.0)
     for _ in range(4):
         for _ in range(4):
             page.keyboard.press("ArrowRight")
-        rec.pause(1.5)
+        rec.pause(1.8)
     rec.say("学習した 3DGS なら SAM の結果は実画像とほぼ同じ。点群の描画では盆栽を検出できない", hold=5.0)
     rec.say("SpatialSAM Studio — オープンウェイト・ローカル GPU だけで、テキストから動画と 3D をセグメント", hold=4.0)
 
 
 def run_demo(page: Page) -> Recorder:
-    rec = Recorder(page)
     page.goto(URL)
     page.get_by_role("heading", name="SpatialSAM Studio").wait_for(timeout=120_000)
+    page.wait_for_load_state("networkidle")
+    rec = Recorder(page)  # ここから先を動画に残す
     rec.say("SpatialSAM Studio：テキスト指定の動画セグメンテーションを 3D Gaussian Splatting とつなぐ", hold=3.5)
     scene_step(rec)
     segmentation_step(rec)
@@ -242,7 +246,7 @@ def speed_up(raw: Path, out: Path, segments: list[tuple[float, float]], offset: 
     """録画（WebM）を MP4 にし、待ち区間だけ FAST_FORWARD 倍速にする。offset は録画開始から計測開始までの秒数。"""
     import imageio_ffmpeg
 
-    cuts, cursor = [], 0.0
+    cuts, cursor = [], offset  # 録画開始から計測開始まで（ページ読み込み中の白い画面）は捨てる
     for start, end in segments:
         start, end = start + offset, end + offset
         cuts += [(cursor, start, 1.0), (start, end, FAST_FORWARD)]

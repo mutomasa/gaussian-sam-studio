@@ -69,8 +69,30 @@ def convert_frame_output(frame_index: int, output: dict[str, Any]) -> FrameMasks
     return FrameMasks(
         frame_index,
         {int(obj_ids[i]): masks[i] for i in kept},
-        {int(obj_ids[i]): float(probs[i]) for i in kept},
+        {int(obj_ids[i]): _score(probs[i]) for i in kept},
     )
+
+
+def _score(prob: float) -> float:
+    """検出スコアの無い出力（TRACKER_ONLY_SCORE）は NaN にする。"""
+    return float("nan") if prob <= TRACKER_ONLY_SCORE else float(prob)
+
+
+TRACKER_ONLY_SCORE = -10000.0  # 逆向き追跡など、検出スコアが無い出力に sam3 が入れる値
+
+
+def first_detected_frame(frames: dict[int, FrameMasks]) -> int | None:
+    detected = [index for index, frame in frames.items() if frame.masks]
+    return min(detected) if detected else None
+
+
+def backfill(frames: dict[int, FrameMasks], earlier: dict[int, FrameMasks]) -> dict[int, FrameMasks]:
+    """最初の検出より前のフレームだけを逆向き追跡の結果で置き換える（それ以降は順方向の結果を残す）。"""
+    first = first_detected_frame(frames)
+    if first is None:
+        return frames
+    filled = {i: f for i, f in earlier.items() if i < first and f.masks}
+    return frames | filled
 
 
 class Sam31Segmenter:
@@ -90,11 +112,11 @@ class Sam31Segmenter:
         session_id = self._start_session(predictor, str(request.frames_dir))
         try:
             self._add_text_prompt(predictor, session_id, request.prompt)
-            responses = self._propagate(predictor, session_id)
-            frames = [convert_frame_output(r["frame_index"], r["outputs"]) for r in responses]
+            frames = self._convert(self._propagate(predictor, session_id, "forward"))
+            frames = backfill(frames, self._backfill_frames(predictor, session_id, frames))
         finally:
             predictor.handle_request({"type": "close_session", "session_id": session_id})
-        return SegmentationResult(sorted(frames, key=lambda f: f.frame_index))
+        return SegmentationResult(sorted(frames.values(), key=lambda f: f.frame_index))
 
     def release(self) -> None:
         if self._predictor is not None and hasattr(self._predictor, "shutdown"):
@@ -121,7 +143,24 @@ class Sam31Segmenter:
         )
 
     @staticmethod
-    def _propagate(predictor: Any, session_id: str) -> Iterable[dict[str, Any]]:
-        return list(
-            predictor.handle_stream_request({"type": "propagate_in_video", "session_id": session_id})
-        )
+    def _propagate(predictor: Any, session_id: str, direction: str,
+                   start: int | None = None) -> Iterable[dict[str, Any]]:
+        request = {"type": "propagate_in_video", "session_id": session_id, "propagation_direction": direction}
+        if start is not None:
+            request["start_frame_index"] = start
+        return list(predictor.handle_stream_request(request))
+
+    @staticmethod
+    def _convert(responses: Iterable[dict[str, Any]]) -> dict[int, FrameMasks]:
+        return {r["frame_index"]: convert_frame_output(r["frame_index"], r["outputs"]) for r in responses}
+
+    def _backfill_frames(self, predictor: Any, session_id: str, frames: dict[int, FrameMasks]) -> dict[int, FrameMasks]:
+        """最初に物体が出たフレームより前を、そこから逆向きに追跡して埋める #30。
+
+        テキストプロンプトを付けたフレーム 0 で検出できず、数フレーム後から追跡が始まることがある
+        （bonsai の描画動画など）。逆向きの追跡は同じセッションの状態をそのまま使える。
+        """
+        first = first_detected_frame(frames)
+        if first is None or first == 0:
+            return {}
+        return self._convert(self._propagate(predictor, session_id, "backward", start=first))

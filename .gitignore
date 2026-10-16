@@ -19,3 +19,6 @@ samples/*
 *.mp4
 
 .streamlit/secrets.toml
+
+# Claude Code のサブエージェント用 worktree
+.claude/worktrees/

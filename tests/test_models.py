@@ -64,6 +64,50 @@ def test_sam31_segmenter_request_sequence(tmp_path):
     assert [f.frame_index for f in result.frames] == [0, 1]
 
 
+def output(obj_ids, prob=0.7, shape=(2, 2)):
+    return {"out_obj_ids": np.array(obj_ids), "out_binary_masks": np.ones((len(obj_ids), *shape), bool),
+            "out_probs": np.full(len(obj_ids), prob)}
+
+
+class LateDetectionPredictor:
+    """フレーム 0・1 で検出できず 2 から追跡が始まる。逆向きの追跡ではスコアの無い結果を返す。"""
+
+    def __init__(self):
+        self.streams = []
+
+    def handle_request(self, request):
+        return {"session_id": "s1", "outputs": {}}
+
+    def handle_stream_request(self, request):
+        self.streams.append((request["propagation_direction"], request.get("start_frame_index")))
+        if request["propagation_direction"] == "forward":
+            for i in range(5):
+                yield {"frame_index": i, "outputs": output([] if i < 2 else [4])}
+        else:
+            for i in (2, 1, 0):
+                yield {"frame_index": i, "outputs": output([4], prob=-10000.0)}
+
+
+def test_sam31_segmenter_backfills_frames_before_first_detection(tmp_path):
+    predictor = LateDetectionPredictor()
+    segmenter = Sam31Segmenter(Sam31Settings(), predictor_factory=lambda _: predictor)
+    result = segmenter.segment(SegmentationRequest(tmp_path, "bonsai"))
+    assert predictor.streams == [("forward", None), ("backward", 2)]
+    by_frame = result.by_frame()
+    assert all(4 in by_frame[i].masks for i in range(5))
+    assert np.isnan(by_frame[0].scores[4]) and by_frame[2].scores[4] == pytest.approx(0.7)  # 2 以降は順方向の結果
+
+
+def test_no_backfill_when_detected_from_start_or_never(tmp_path):
+    from spatialsam.models.sam31_segmenter import backfill, first_detected_frame
+
+    frames = {0: FrameMasks(0, {}), 1: FrameMasks(1, {})}
+    assert first_detected_frame(frames) is None and backfill(frames, {0: FrameMasks(0, {1: np.ones((1, 1), bool)})}) == frames
+    predictor = FakePredictor()
+    Sam31Segmenter(Sam31Settings(), predictor_factory=lambda _: predictor).segment(SegmentationRequest(tmp_path, "x"))
+    assert predictor.requests.count("propagate_in_video") == 1
+
+
 def test_fake_segmenter_returns_one_object_per_frame(synthetic_video, tmp_path):
     from spatialsam.video.io import FrameSampling, extract_frames
 

@@ -23,5 +23,12 @@ chunking:
   overlap: 48       # 隣り合うチャンクの重なり。SAM 3.1 は新しいセッションで物体を出すまで数〜数十フレームかかるので長めに
   match_iou: 0.3    # 重なりでの IoU がこれ未満なら別物体として新しい ID を振る
 
+# 実験の記録先として MLflow（Docker）にも送る #45。outputs/ への保存はそのまま
+#   docker compose -f docker/mlflow/compose.yaml up -d で起動 → http://127.0.0.1:5000
+# サーバーに届かなければ記録を飛ばして続ける。環境変数 MLFLOW_TRACKING_URI があればそちらを使う
+tracking:
+  mlflow_uri: http://127.0.0.1:5000   # null で無効
+  log_artifacts: true                 # 重畳動画・metadata などのファイルも送る（学習した PLY は送らない）
+
 outputs_dir: outputs
 max_upload_mib: 500

@@ -17,6 +17,7 @@ import numpy as np
 from spatialsam.experiments.renders import RenderRun, RenderStore
 from spatialsam.experiments.segmentation3d import Segmentation3D, Segmentation3DStore
 from spatialsam.experiments.store import Experiment
+from spatialsam.experiments.tracking_records import record_segmentation3d
 from spatialsam.pipeline.evaluation import inference_frame_shape
 from spatialsam.spatial.gaussians import GaussianScene, save_ply
 from spatialsam.spatial.mask_lifting import LiftResult, LiftSettings, MaskedView, lift_masks
@@ -94,6 +95,7 @@ def run_lifting(experiment: Experiment, renders: RenderStore, store: Segmentatio
         "num_never_visible": int((result.votes.visible == 0).sum()),
         "objects": object_summary(result),
     })
+    record_segmentation3d(run)
     return run
 
 
@@ -119,4 +121,5 @@ def evaluate_reprojection(run: Segmentation3D, scene: GaussianScene, cameras: li
     evaluation = {"reference_experiment": reference.id, **summarize_reprojection(ious, predicted, masks),
                   "per_view_iou": ious}
     run.update_summary(reprojection=evaluation)
+    record_segmentation3d(run)
     return evaluation

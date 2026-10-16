@@ -14,6 +14,8 @@ dependencies = [
     "pandas>=2.2",
     "pyyaml>=6.0",
     "streamlit>=1.40",
+    # 実験の記録先（Docker の MLflow サーバー、docker/mlflow/compose.yaml）#45。サーバーと同じ版に固定
+    "mlflow-skinny==3.17.1",
 ]
 
 [dependency-groups]

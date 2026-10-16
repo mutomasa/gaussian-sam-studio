@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 from spatialsam.experiments.store import Experiment, ExperimentStore
+from spatialsam.experiments.tracking_records import record_segmentation
 from spatialsam.models.gpu import Measurement, empty_cuda_cache, is_out_of_memory, measure
 from spatialsam.models.segmenter import VideoSegmenter
 from spatialsam.models.types import SegmentationRequest, SegmentationResult
@@ -121,4 +122,5 @@ def run_segmentation(job: SegmentationJob, segmenter: VideoSegmenter, store: Exp
     fps = run.sampling.output_fps(info.fps)
     write_video(iter_overlay_frames(experiment.frames_dir, run.result, run.indices), experiment.overlay_path, fps)
     experiment.save_metadata(build_metadata(job, segmenter, run, fps))
+    record_segmentation(experiment)
     return SegmentationOutcome(experiment, run.result, run.measurement)

@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from spatialsam.experiments.renders import RenderRun, RenderStore
+from spatialsam.experiments.tracking_records import record_render
 from spatialsam.models.gpu import measure
 from spatialsam.spatial.camera import Camera
 from spatialsam.spatial.renderer import RenderOutput
@@ -97,4 +98,5 @@ def run_render(job: RenderJob, renderer: Renderer, store: RenderStore,
     limits = shared_depth_range(run, count)
     write_video(iter_depth_preview(run, count, *limits), run.depth_video_path, job.fps)
     run.save_metadata(build_metadata(job, measurement.elapsed_sec, measurement.peak_vram_mib, limits))
+    record_render(run)
     return run

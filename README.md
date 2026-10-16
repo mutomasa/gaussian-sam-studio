@@ -29,6 +29,7 @@ flowchart LR
 - [起動と画面の使い方](#起動と画面の使い方)
 - [bonsai で一連の流れを試す](#bonsai-で一連の流れを試す)
 - [コマンドラインのスクリプト](#コマンドラインのスクリプト)
+- [MLflow で実験を一覧・比較する](#mlflow-で実験を一覧比較する)
 - [設定](#設定)
 - [出力の保存先](#出力の保存先)
 - [構成](#構成)
@@ -237,6 +238,34 @@ uv run python scripts/record_demo.py      # → outputs/demo/bonsai_demo.mp4（1
 
 ---
 
+## MLflow で実験を一覧・比較する
+
+結果は `outputs/` に保存したうえで、ローカルの [MLflow](https://mlflow.org/) トラッキングサーバー（Docker）にも記録します。
+MLflow は一覧・比較のための追加の記録先で、正の保存先は `outputs/` のままです。
+
+```bash
+docker compose -f docker/mlflow/compose.yaml up -d    # 起動 → http://127.0.0.1:5000
+docker compose -f docker/mlflow/compose.yaml down     # 停止（記録は Docker ボリューム spatialsam-mlflow に残る）
+```
+
+- サーバーは `127.0.0.1` だけで待ち受けます。データは外に出ません。
+- MLflow 3.17.1 に固定しています（クライアントの `mlflow-skinny` と同じ版）。
+
+| MLflow の experiment | 1 つの run の中身 |
+|---|---|
+| `spatialsam/segmentation` | SAM の実験。プロンプト・モデル・サンプリング、処理時間・VRAM・物体数、重畳動画と metadata。GT で評価すると、同じ run に `eval.J` / `eval.F` / `eval.J_and_F` / `eval.Dice` が加わる |
+| `spatialsam/render` | 描画。シーン・軌道、フレーム数・時間・VRAM |
+| `spatialsam/training` | 3DGS 学習。設定と、step ごとの学習曲線（`train.loss` / `train.psnr` / `train.num_gaussians`）、評価用視点の PSNR / SSIM |
+| `spatialsam/comparison` | 実画像 vs 3D 描画。ソースごとの画質、プロンプト × ソースごとの検出率と IoU |
+| `spatialsam/segmentation3d` | 3D セグメンテーション。ラベル数・信頼度・再投影 IoU |
+
+- 宛先は `configs/model.yaml` の `tracking.mlflow_uri` で決まります（既定 `http://127.0.0.1:5000`、`null` で無効）。環境変数 `MLFLOW_TRACKING_URI` があれば、そちらを優先します。
+- サーバーが起動していないときは警告を 1 回出し、記録だけを飛ばします。アプリや CLI はそのまま動きます。
+- run はタグ `spatialsam.id`（`outputs/` の ID と同じ）で引き当てられます。
+- 学習した PLY のような大きなファイルは送りません。
+
+---
+
 ## 設定
 
 `configs/model.yaml` で設定します。主な項目は次のとおりです。
@@ -251,6 +280,7 @@ uv run python scripts/record_demo.py      # → outputs/demo/bonsai_demo.mp4（1
 | `sam31.bf16_backbone` | true | 画像・テキストエンコーダだけ bf16 にする（精度差は実質無く、VRAM は約 2.5GB 減る） |
 | `sam31.offload_video_to_cpu` | true | デコードしたフレームを CPU メモリに置く |
 | `chunking.chunk_size` / `overlap` / `match_iou` | 200 / 48 / 0.3 | 長い動画のチャンク分割。`chunking: null` で無効にする |
+| `tracking.mlflow_uri` / `log_artifacts` | `http://127.0.0.1:5000` / true | MLflow への記録（`null` で無効）と、ファイルも送るか |
 | `outputs_dir` | `outputs` | 出力先 |
 | `max_upload_mib` | 500 | アップロードできる動画の上限 |
 

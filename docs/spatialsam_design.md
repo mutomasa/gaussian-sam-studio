@@ -89,7 +89,7 @@ flowchart TD
 | Mask Lifting | 逆投影、Gaussian 中心の投影と可視判定、多視点投票、強調・抽出 | `spatial/mask_lifting.py`、`spatial/scene_highlight.py`、`pipeline/lifting.py` | NumPy |
 | Evaluation | IoU / Dice / 輪郭 F / J&F、PSNR / SSIM / LPIPS、再投影 IoU / 3D IoU | `evaluation/` | NumPy、PyTorch、lpips |
 | Jobs | 別プロセスのジョブ（学習・比較）、状態ファイル、GPU 排他 | `jobs.py`、`training/jobs.py`、`pipeline/comparison_job.py` | subprocess |
-| Experiment Store | 入出力、設定、メトリクス、成果物の保存 | `experiments/` | ローカルの JSON / CSV / NPZ |
+| Experiment Store | 入出力、設定、メトリクス、成果物の保存 | `experiments/`、`tracking.py` | ローカルの JSON / CSV / NPZ（正）と MLflow（Docker、一覧・比較用） |
 
 ## 4. Streamlit 画面設計
 
@@ -346,7 +346,22 @@ gaussian-sam-studio/
 | 重い処理は別プロセス | 学習と比較を別プロセスのジョブにする（`start_new_session`、`status.json` を原子的に更新、PID の生存確認） |
 | SAM・学習・比較を同時に動かさない | GPU を使うジョブが動いている間（`active_gpu_jobs`）は、推論と新しいジョブの開始ボタンを無効にする。ジョブの開始時には UI プロセスの SAM を解放する |
 
-### 10.4 その他
+### 10.4 実験の記録（MLflow、#45）
+
+- **正の保存先**は `outputs/`（ローカルの JSON / CSV / NPZ）のまま。そのうえで、一覧・比較のために MLflow のトラッキングサーバーにも送る。
+- **サーバー**: Docker（`docker/mlflow/compose.yaml`、`ghcr.io/mlflow/mlflow:v3.17.1`）。
+  - `127.0.0.1` だけで待ち受ける。記録は SQLite と成果物を名前付きボリュームに置く。
+  - クライアントは `mlflow-skinny==3.17.1`。
+- **記録の単位**:
+  - 種類ごとに experiment を分ける（`spatialsam/segmentation`、`render`、`training`、`comparison`、`segmentation3d`）。
+  - 1 つの記録を 1 つの run にし、タグ `spatialsam.id` で引き当てる。後から評価したときは、同じ run に指標を足す（param は最初の 1 回だけ）。
+- **呼び出す場所**: パイプラインが保存を終えた直後（`experiments/tracking_records.py`）。別プロセスのジョブ（学習・比較）からも同じ宛先に送る。
+- **失敗時の扱い**: 無効のとき、サーバーに届かないとき、記録に失敗したときは警告だけ出して続ける（`tracking.safe_log`）。
+  - 宛先は `MLFLOW_TRACKING_URI`、無ければ `tracking.mlflow_uri`。
+  - テストでは `SPATIALSAM_DISABLE_TRACKING=1` で止める。
+- **キー名**: MLflow の制約に合わせて変換する（`J&F` → `J_and_F`）。
+
+### 10.5 その他
 
 - **アップロード**: サイズ（既定 500MiB）と形式を検査し、一時ディレクトリに分けて保存する。
 - **データの扱い**: ローカルから外部へ送らない。DAVIS（CC BY-NC 4.0）と Mip-NeRF 360 のデータはリポジトリに含めない。
@@ -392,6 +407,8 @@ gaussian-sam-studio/
 | ジョブキューで直列化 | 別プロセスのジョブと GPU 排他のチェック | 同時に動くのは 1 つで十分。状態をファイルで共有でき、Streamlit を止めても続く |
 | 3DGS の学習は「必要に応じて」 | 学習ジョブを実装（MCMC） | 既存の学習済みシーンの品質が低く、比較と持ち上げに使えなかった |
 | コード構成 `src/models/sam_adapter.py` ほか | `src/spatialsam/` 以下に機能ごとに配置 | パッケージとしてインストールし、テストしやすくするため |
+
+> **Experiment Store と MLflow（#45）**: その後、MLflow を Docker で動かし、ローカル保存に加えて記録するようにした（§10.4）。オフライン・ローカル完結の方針は保ったまま（サーバーは 127.0.0.1 のみ）。
 
 ---
 

@@ -350,7 +350,8 @@ gaussian-sam-studio/
 
 - **正の保存先**は `outputs/`（ローカルの JSON / CSV / NPZ）のまま。そのうえで、一覧・比較のために MLflow のトラッキングサーバーにも送る。
 - **サーバー**: Docker（`docker/mlflow/compose.yaml`、`ghcr.io/mlflow/mlflow:v3.17.1`）。
-  - `127.0.0.1` だけで待ち受ける。記録は SQLite と成果物を名前付きボリュームに置く。
+  - 既定は `127.0.0.1` だけで待ち受ける。LAN の別の PC から見るときは `compose.lan.yaml` を重ね、`docker/mlflow/.env` で指定した LAN のアドレスでも待ち受ける（#47。認証は無いので信頼できるネットワークに限る）。
+  - 記録は SQLite と成果物を名前付きボリュームに置く。
   - クライアントは `mlflow-skinny==3.17.1`。
 - **記録の単位**:
   - 種類ごとに experiment を分ける（`spatialsam/segmentation`、`render`、`training`、`comparison`、`segmentation3d`）。

@@ -9,6 +9,36 @@
 ▶ **全編のデモ動画（133 秒、MP4）**: [bonsai_demo.mp4](https://github.com/mutomasa/gaussian-sam-studio/releases/download/v0.1.0/bonsai_demo.mp4)（[Release v0.1.0](https://github.com/mutomasa/gaussian-sam-studio/releases/tag/v0.1.0)）。
 GIF は見どころ 37 秒の抜粋です。
 
+### このデモで何をしているか
+
+ひとことで言うと、「**写真から作った 3D シーンの中の盆栽を、テキスト「bonsai」だけで 3D のまま切り出す**」デモです。
+SAM 3.1 は 2D の画像（動画）しか扱えないので、3D シーンをいったん動画に描画して SAM にかけ、
+その結果を深度とカメラ姿勢を使って 3D に戻しています。
+
+```mermaid
+flowchart LR
+    A[写真 292 枚<br/>＋ COLMAP のカメラ姿勢] --> B[3DGS を学習<br/>Gaussian 100 万個]
+    B --> C[描画した動画<br/>RGB・深度・カメラ姿勢]
+    C --> D[SAM 3.1<br/>「bonsai」で 2D マスク]
+    D --> E[2D マスクを 3D に持ち上げ<br/>盆栽の Gaussian 約 19 万個]
+    E --> F[強調・抽出<br/>新しい視点で実写と照合]
+```
+
+| ステップ | 何をしているか | デモの場面 |
+|---|---|---|
+| 1. 3DGS を作る | Mip-NeRF 360 の **bonsai の写真 292 枚**（どの写真も COLMAP でカメラ姿勢が分かっている）から、gsplat で 3D Gaussian Splatting を学習する。部屋全体が約 100 万個の Gaussian で再現される | 3D Rendering の「3DGS 学習」タブ（学習済みの結果を使う） |
+| 2. 3D を動画にする | 学習した 3DGS を、撮影カメラの軌道に沿って描画して**動画**にする。各フレームの**深度**と**カメラ姿勢**も一緒に保存する | 3D Rendering の「描画」タブ（RGB と深度の動画） |
+| 3. SAM 3.1 にかける | 描画した動画に、テキスト「bonsai」で SAM 3.1 をかける。**SAM が見ているのは描画された 2D の画像**で、フレームごとに盆栽のマスクが出る | Video Segmentation（赤いマスクの重畳） |
+| 4. 3D に戻す | 各 Gaussian を各フレームに投影し、深度で「見えている」と判断できたフレームで、マスクの内側に写ったかを数える。見えたフレームの多くで内側だった Gaussian を「盆栽」とする | 3D Segmentation（元のシーン / 対象を強調 / 対象だけ） |
+| 5. 確かめる | 3D の盆栽を、**学習にも持ち上げにも使っていない視点**に描き、その視点の**実際の写真**に SAM をかけた結果と比べる。重なりの一致度（IoU）は 0.908 | 3D Segmentation の評価 |
+| 6. 比べる | 実写・学習した 3DGS の描画・学習していない点群の描画に、同じプロンプトで SAM をかけて比べる | Evaluation の「実画像 vs 3D 描画」（3 枚並び） |
+
+- **最終的な成果は「3D の盆栽」そのもの**です。どの Gaussian が盆栽かがラベルとして分かるので、盆栽だけを 3DGS の PLY や点群（PLY / PCD）で書き出したり、好きな角度から盆栽だけを描いたりできます。
+- **描画画像でも SAM は実写とほぼ同じように効きます。** 学習した 3DGS の描画は実写に近く（評価用視点で PSNR 30.7）、SAM の結果も実写とよく一致しました（IoU 0.92〜0.98）。一方、学習していない点群の描画では盆栽を検出できなかったので、きれいな 3DGS を作ることが前提になります。
+- 方法と数式の詳細は [docs/segmentation3d.md](docs/segmentation3d.md) と [docs/theory.md](docs/theory.md)、比較の結果は [docs/render_vs_real.md](docs/render_vs_real.md) にあります。
+
+### 全体の構成
+
 ```mermaid
 flowchart LR
     V[動画] --> S[SAM 3.1<br/>テキストプロンプト] --> M[物体ごとのマスク] --> E[評価<br/>J&F / Dice]

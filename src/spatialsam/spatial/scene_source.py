@@ -3,6 +3,8 @@
 - PLY のみ: 3DGS または点群。軌道はシーンの範囲から決める（上方向は指定）
 - COLMAP のみ: points3D を Gaussian にして描く。撮影カメラから軌道を推定できる
 - 両方: 3DGS（COLMAP 座標で学習済み）を、撮影カメラの視点や推定した軌道で描く
+
+点群（PLY / PCD / XYZ、COLMAP の points3D）には Open3D の前処理（外れ値除去・間引き）を掛けられる。
 """
 
 from __future__ import annotations
@@ -14,7 +16,8 @@ import numpy as np
 
 from spatialsam.spatial.colmap import ColmapView, load_views, read_points3d
 from spatialsam.spatial.gaussians import GaussianScene
-from spatialsam.spatial.pointcloud import gaussians_from_points, load_scene
+from spatialsam.spatial.point_io import PointCloudFilter
+from spatialsam.spatial.pointcloud import load_scene, points_to_scene
 from spatialsam.spatial.trajectory import OrbitSpec, orbit_from_cameras
 
 AXES = {"+x": (1, 0, 0), "-x": (-1, 0, 0), "+y": (0, 1, 0), "-y": (0, -1, 0), "+z": (0, 0, 1), "-z": (0, 0, -1)}
@@ -22,8 +25,9 @@ AXES = {"+x": (1, 0, 0), "-x": (-1, 0, 0), "+y": (0, 1, 0), "-y": (0, -1, 0), "+
 
 @dataclass(frozen=True)
 class SceneSource:
-    ply_path: Path | None = None
+    ply_path: Path | None = None    # 3DGS の PLY、または点群ファイル（PLY / PCD / XYZ など）
     sparse_dir: Path | None = None
+    point_filter: PointCloudFilter | None = None  # 点群の前処理（3DGS には効かない）
 
     def __post_init__(self) -> None:
         if self.ply_path is None and self.sparse_dir is None:
@@ -40,13 +44,16 @@ class SceneSource:
     def label(self) -> str:
         return str(self.ply_path or self.sparse_dir / "points3D.bin")
 
-    def to_dict(self) -> dict[str, str | None]:
+    def to_dict(self) -> dict:
         return {"ply_path": str(self.ply_path) if self.ply_path else None,
-                "sparse_dir": str(self.sparse_dir) if self.sparse_dir else None}
+                "sparse_dir": str(self.sparse_dir) if self.sparse_dir else None,
+                "point_filter": self.point_filter.to_dict() if self.point_filter else None}
 
     @classmethod
-    def from_dict(cls, raw: dict[str, str | None]) -> SceneSource:
-        return cls(*(Path(raw[k]) if raw.get(k) else None for k in ("ply_path", "sparse_dir")))
+    def from_dict(cls, raw: dict) -> SceneSource:
+        paths = (Path(raw[k]) if raw.get(k) else None for k in ("ply_path", "sparse_dir"))
+        point_filter = PointCloudFilter(**raw["point_filter"]) if raw.get("point_filter") else None
+        return cls(*paths, point_filter=point_filter)
 
     @classmethod
     def from_label(cls, label: str) -> SceneSource:
@@ -56,9 +63,9 @@ class SceneSource:
 
     def load_scene(self) -> GaussianScene:
         if self.ply_path is not None:
-            return load_scene(self.ply_path)
+            return load_scene(self.ply_path, self.point_filter)
         points = read_points3d(self.sparse_dir / "points3D.bin")
-        return gaussians_from_points(points.xyz, points.rgb)
+        return points_to_scene(points.xyz, points.rgb, self.point_filter)
 
     def load_views(self) -> list[ColmapView]:
         return load_views(self.sparse_dir) if self.sparse_dir is not None else []

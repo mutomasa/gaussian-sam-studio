@@ -40,6 +40,8 @@ gpu = [
     "setuptools<81",
     # 3DGS 描画。torch 2.10 向けの prebuilt wheel が無いため初回に CUDA カーネルを JIT ビルドする #13
     "gsplat==1.5.3",
+    # 点群の読み書きと前処理（PCD 対応、外れ値除去、ボクセル間引き）#43
+    "open3d==0.20.0",
     # システムに CUDA ツールチェーンが無くても JIT ビルドできるよう nvcc を venv に入れる。
     # cu12 系の pip wheel には nvcc 本体が無い（ptxas のみ）ため torch も cu130 にしている #13
     "nvidia-cuda-nvcc==13.0.88",

@@ -139,7 +139,8 @@ uv run streamlit run app.py
 
 **「描画」タブ: 3D シーンをカメラ軌道に沿って描画し、動画にします。**
 
-- **入力**: 3DGS の PLY、点群の PLY、COLMAP の sparse ディレクトリ（いずれか、または組み合わせ）。
+- **入力**: 3DGS の PLY、点群（PLY / PCD / XYZ、Open3D で読む）、COLMAP の sparse ディレクトリ（いずれか、または組み合わせ）。
+- **点群の前処理**（Open3D）: 統計的外れ値除去とボクセルでの間引き。学習していない点群を描くときだけ効きます。
 - **軌道**:
   - オービット: 注視点の周りを一周する。COLMAP があれば、注視点・上方向・半径・仰角を撮影カメラから自動で推定します。
   - 撮影カメラの軌道: COLMAP の視点を順にたどる。学習時の評価用視点を除くこともできます。
@@ -162,7 +163,7 @@ uv run streamlit run app.py
 3. 「3D に持ち上げる」を押す。
 
 - 各 Gaussian が、見えている視点でマスクの内側に写った割合（信頼度）でラベルが決まります。
-- 視点を動かしながら「元のシーン / 対象を強調 / 対象だけ」を並べて見られます。対象の Gaussian は PLY でダウンロードできます。
+- 視点を動かしながら「元のシーン / 対象を強調 / 対象だけ」を並べて見られます。対象は 3DGS の PLY と、点群（PLY / PCD、Open3D で書き出し）でダウンロードできます。
 - 「実画像 vs 3D 描画」の比較結果を選ぶと、学習にも持ち上げにも使っていない視点の実画像で評価します（再投影 IoU）。
 
 ### 4. Evaluation
@@ -300,7 +301,7 @@ outputs/
 ├── training/<job_id>/            3DGS 学習: request.json、status.json、train.log、point_cloud.ply、metrics.json
 ├── comparisons/<id>/             実画像 vs 3D 描画: 各ソースの画像と動画、quality.csv、masks.csv、summary.json
 ├── comparison_jobs/<job_id>/     比較ジョブの状態とログ
-├── segmentation3d/<id>/          3D セグメンテーション: labels.npz、object.ply、summary.json（評価を含む）
+├── segmentation3d/<id>/          3D セグメンテーション: labels.npz、object.ply（3DGS）、object_points.ply / .pcd（点群）、summary.json（評価を含む）
 ├── benchmarks/                   サンプルの一括評価の CSV
 └── demo/                         デモ動画
 ```

@@ -14,6 +14,7 @@ from spatialsam.pipeline.rendering import RenderJob, run_render
 from spatialsam.spatial.colmap import ColmapView
 from spatialsam.spatial.gaussians import GaussianScene
 from spatialsam.spatial.renderer import GaussianRenderer
+from spatialsam.spatial.point_io import PointCloudFilter
 from spatialsam.spatial.scene_source import AXES, SceneSource, default_orbit
 from spatialsam.spatial.trajectory import dataset_trajectory, fit_max_side, orbit_summary, orbit_trajectory
 from spatialsam.ui.state import SELECTED_VIDEO_KEY, get_config, show_gpu_status
@@ -33,9 +34,22 @@ def _optional_path(label: str, help_text: str, key: str) -> Path | None:
     return Path(value).expanduser() if value else None
 
 
+def point_filter_form() -> PointCloudFilter | None:
+    """点群（学習していないもの）の前処理。学習済み 3DGS には効かない。"""
+    with st.expander("点群の前処理（Open3D。点群を描くときだけ効く）"):
+        cols = st.columns(4)
+        outliers = cols[0].checkbox("統計的外れ値除去", value=False)
+        neighbors = int(cols[1].number_input("近傍点の数", 2, 200, 20, disabled=not outliers))
+        std_ratio = float(cols[2].number_input("標準偏差の倍率", 0.1, 10.0, 2.0, step=0.1, disabled=not outliers))
+        voxel = float(cols[3].number_input("ボクセルの大きさ（0 = 間引かない）", 0.0, 100.0, 0.0, step=0.01, format="%.3f"))
+    if not outliers and not voxel:
+        return None
+    return PointCloudFilter(outliers, neighbors, std_ratio, voxel or None)
+
+
 def select_source() -> SceneSource | None:
     st.subheader("シーン")
-    ply = _optional_path("PLY のパス（3DGS または点群）", "INRIA 形式の 3DGS PLY、または x/y/z（と red/green/blue）を持つ点群 PLY", PLY_PATH_KEY)
+    ply = _optional_path("PLY / 点群ファイルのパス", "INRIA 形式の 3DGS PLY、または点群（PLY / PCD / XYZ など。Open3D で読む）", PLY_PATH_KEY)
     sparse = _optional_path("COLMAP の sparse ディレクトリ（任意）",
                             "cameras.bin / images.bin / points3D.bin を含むディレクトリ。PLY が無ければ points3D を描く",
                             SPARSE_PATH_KEY)
@@ -43,7 +57,7 @@ def select_source() -> SceneSource | None:
         st.info("PLY か COLMAP のパスを入力してください")
         return None
     try:
-        return SceneSource(ply, sparse)
+        return SceneSource(ply, sparse, point_filter_form())
     except (ValueError, FileNotFoundError) as error:
         st.error(str(error))
         return None

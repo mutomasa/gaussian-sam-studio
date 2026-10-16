@@ -103,7 +103,12 @@ def show_views(run: Segmentation3D, scene: GaussianScene, renders: RenderStore) 
     renderers = view_renderers(str(run.root), scene)
     for col, (title, renderer) in zip(st.columns(3), renderers.items(), strict=True):
         col.image(renderer.render(camera).rgb, caption=title)
-    st.download_button("対象の Gaussian（object.ply）", run.object_ply_path.read_bytes(), f"{run.id}-object.ply")
+    cols = st.columns(3)
+    cols[0].download_button("対象の Gaussian（3DGS PLY）", run.object_ply_path.read_bytes(), f"{run.id}-object.ply")
+    for col, suffix in zip(cols[1:], (".ply", ".pcd"), strict=True):
+        path = run.object_points_path(suffix)
+        if path.exists():  # Open3D 導入（#43）より前の結果には無い
+            col.download_button(f"対象の点群（{suffix[1:].upper()}）", path.read_bytes(), f"{run.id}-object_points{suffix}")
 
 
 def evaluation_panel(run: Segmentation3D, scene: GaussianScene, experiments: ExperimentStore) -> None:

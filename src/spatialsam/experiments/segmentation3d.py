@@ -2,6 +2,7 @@
 
 - `labels.npz`: `visible`（見えた視点数）、`confidence_<物体ID>`（float16）、`labels_<物体ID>`（bool）
 - `object.ply`: いずれかの物体に属する Gaussian だけを抜き出した 3DGS
+- `object_points.ply` / `object_points.pcd`: その中心と色の点群（Open3D で書き出し、他のツールで使う用）
 - `summary.json`: 入力（SAM 実験・描画結果・シーン）、設定、物体ごとの Gaussian 数、評価
 """
 
@@ -29,6 +30,9 @@ class Segmentation3D:
     @property
     def object_ply_path(self) -> Path:
         return self.root / "object.ply"
+
+    def object_points_path(self, suffix: str = ".ply") -> Path:
+        return self.root / f"object_points{suffix}"
 
     def save_labels(self, visible: np.ndarray, confidence: dict[int, np.ndarray], labels: dict[int, np.ndarray]) -> None:
         arrays = {"visible": visible.astype(np.int32)}

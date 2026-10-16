@@ -12,6 +12,7 @@ import numpy as np
 from plyfile import PlyData
 
 from spatialsam.spatial.gaussians import GaussianScene, load_ply
+from spatialsam.spatial.point_io import PointCloudFilter, filter_points, read_point_cloud
 
 SH_C0 = 0.28209479177387814  # 0 次の球面調和関数の係数
 DEFAULT_OPACITY = 0.9
@@ -66,20 +67,18 @@ def is_gaussian_ply(path: Path) -> bool:
     return {"f_dc_0", "opacity", "scale_0", "rot_0"} <= names
 
 
-def read_point_cloud_ply(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """x, y, z と（あれば）red, green, blue。色が無ければ灰色にする。"""
-    vertex = PlyData.read(str(path))["vertex"]
-    xyz = np.stack([np.asarray(vertex[c], np.float32) for c in "xyz"], axis=1)
-    names = {p.name for p in vertex.properties}
-    if {"red", "green", "blue"} <= names:
-        rgb = np.stack([np.asarray(vertex[c]) for c in ("red", "green", "blue")], axis=1).astype(np.uint8)
-    else:
-        rgb = np.full_like(xyz, 128, dtype=np.uint8)
-    return xyz, rgb
+def points_to_scene(xyz: np.ndarray, rgb: np.ndarray, point_filter: PointCloudFilter | None = None) -> GaussianScene:
+    """点群を（必要なら Open3D で前処理してから）等方 Gaussian にする。"""
+    if point_filter is not None:
+        xyz, rgb, _ = filter_points(xyz, rgb, point_filter)
+    return gaussians_from_points(xyz, rgb)
 
 
-def load_scene(path: Path) -> GaussianScene:
-    """3DGS の PLY ならそのまま、普通の点群 PLY なら Gaussian に変換して読む。"""
-    if is_gaussian_ply(path):
+def load_scene(path: Path, point_filter: PointCloudFilter | None = None) -> GaussianScene:
+    """3DGS の PLY ならそのまま、点群（PLY / PCD / XYZ など）なら Open3D で読んで Gaussian に変換する。
+
+    前処理（point_filter）は点群にだけ効く。学習済みの 3DGS には適用しない。
+    """
+    if path.suffix.lower() == ".ply" and is_gaussian_ply(path):
         return load_ply(path)
-    return gaussians_from_points(*read_point_cloud_ply(path))
+    return points_to_scene(*read_point_cloud(path), point_filter)

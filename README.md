@@ -4,6 +4,11 @@
 オープンウェイトの [SAM 3.1](https://huggingface.co/facebook/sam3.1) と [gsplat](https://github.com/nerfstudio-project/gsplat) を使い、
 推論・3DGS の学習・描画をすべて**ローカル GPU（8GB VRAM で動作確認）**で行います。外部の推論 API は使いません。
 
+![bonsai のデモ: 3DGS の描画 → SAM 3.1 で「bonsai」→ 3D の Gaussian に持ち上げ → 実画像と比較](docs/media/bonsai_demo.gif)
+
+▶ **全編のデモ動画（133 秒、MP4）**: [bonsai_demo.mp4](https://github.com/mutomasa/gaussian-sam-studio/releases/download/v0.1.0/bonsai_demo.mp4)（[Release v0.1.0](https://github.com/mutomasa/gaussian-sam-studio/releases/tag/v0.1.0)）。
+GIF は見どころ 37 秒の抜粋です。
+
 ```mermaid
 flowchart LR
     V[動画] --> S[SAM 3.1<br/>テキストプロンプト] --> M[物体ごとのマスク] --> E[評価<br/>J&F / Dice]
@@ -18,7 +23,7 @@ flowchart LR
 | 2. 3DGS の学習と描画 | COLMAP から 3DGS を学習し、任意のカメラ軌道で RGB・深度・姿勢付きの動画を作る | 7000 step で評価用視点の PSNR 30.7 / SSIM 0.943（9 分、VRAM 1.2GB） |
 | 3. テキストによる 3D セグメンテーション | 描画動画への SAM の結果を、深度と姿勢で Gaussian に持ち上げる | 学習・持ち上げに使っていない視点で、実画像の SAM と IoU 0.908（bonsai）/ 0.927（table） |
 
-デモ動画（bonsai の一連の流れ）は `scripts/record_demo.py` で録画できます（[デモ動画を録る](#デモ動画を録る)）。
+デモ動画は `scripts/record_demo.py` で録画し、`scripts/make_demo_gif.py` で README 用の GIF にしています（[デモ動画を録る](#デモ動画を録る)）。
 
 ---
 
@@ -235,7 +240,10 @@ uv run python scripts/lift_masks.py --experiment <experiment_id> --compare <comp
 ```bash
 uv run playwright install ffmpeg          # 初回だけ（Playwright の録画用 ffmpeg）
 uv run python scripts/record_demo.py      # → outputs/demo/bonsai_demo.mp4（1440x900、約 2 分）
+uv run python scripts/make_demo_gif.py    # → docs/media/bonsai_demo.gif（見どころの抜粋。区間は --segment で指定）
 ```
+
+画面に映るのは Mip-NeRF 360 bonsai の画像とその描画です。動画を公開するときは、データの利用条件を確認してください。
 
 ---
 

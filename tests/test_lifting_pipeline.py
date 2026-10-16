@@ -85,6 +85,12 @@ def test_run_lifting_labels_target_only(tmp_path):
     assert summary["objects"] == [{"object_id": 3, "num_gaussians": 1, "mean_confidence": 1.0}]
     assert run.load_labels()[3].tolist() == [True, False]
     assert len(load_ply(run.object_ply_path)) == 1
+    pytest.importorskip("open3d")
+    from spatialsam.spatial.point_io import read_point_cloud
+
+    for suffix in (".ply", ".pcd"):
+        points, _ = read_point_cloud(run.object_points_path(suffix))
+        assert np.allclose(points, [[0.0, 0.0, 0.0]])
     assert store.list_ids() == [run.id]
 
 

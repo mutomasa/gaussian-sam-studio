@@ -21,7 +21,8 @@ from spatialsam.experiments.tracking_records import record_segmentation3d
 from spatialsam.pipeline.evaluation import inference_frame_shape
 from spatialsam.spatial.gaussians import GaussianScene, save_ply
 from spatialsam.spatial.mask_lifting import LiftResult, LiftSettings, MaskedView, lift_masks
-from spatialsam.spatial.scene_highlight import subset_scene
+from spatialsam.spatial.point_io import write_point_cloud
+from spatialsam.spatial.scene_highlight import scene_points, subset_scene
 from spatialsam.spatial.scene_source import SceneSource
 
 
@@ -71,7 +72,10 @@ def object_summary(result: LiftResult) -> list[dict[str, Any]]:
 def save_result(run: Segmentation3D, scene: GaussianScene, result: LiftResult) -> None:
     run.save_labels(result.votes.visible, {k: result.votes.confidence(k) for k in result.object_ids},
                     {k: result.labels(k) for k in result.object_ids})
-    save_ply(subset_scene(scene, result.any_labels()), run.object_ply_path)
+    target = subset_scene(scene, result.any_labels())
+    save_ply(target, run.object_ply_path)
+    for suffix in (".ply", ".pcd"):
+        write_point_cloud(run.object_points_path(suffix), *scene_points(target))
 
 
 def run_lifting(experiment: Experiment, renders: RenderStore, store: Segmentation3DStore,

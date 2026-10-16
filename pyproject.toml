@@ -48,6 +48,8 @@ gpu = [
     "nvidia-nvvm==13.0.88",
     "nvidia-cuda-crt==13.0.88",
     "plyfile>=1.0",
+    # 点群の読み書きと前処理（PCD 対応、外れ値除去、ボクセル間引き）#43
+    "open3d==0.20.0",
     # 画質指標 LPIPS（BSD-2。線形層の重みは同梱、AlexNet は torchvision の ImageNet 重みを初回に取得）#16
     "lpips==0.1.4",
 ]

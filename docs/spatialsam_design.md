@@ -34,7 +34,7 @@
 - Streamlit のリクエスト内で 3DGS を学習すること。学習は別プロセスのジョブで行う（§10.3）。
 - 2D IoU だけで 3D 精度を保証すること。3D の評価は再投影 IoU と 3D IoU で別に行う（§6）。
 - 静的 3DGS から、物体そのものが動く動画を生成すること。
-- RGB-D 入力、PCD 形式、単眼深度推定。いずれも未実装で、深度は 3DGS の描画から得る。
+- RGB-D 入力、単眼深度推定。いずれも未実装で、深度は 3DGS の描画から得る（点群は PLY / PCD / XYZ を Open3D で読める）。
 
 ### 技術上の注意
 
@@ -84,7 +84,7 @@ flowchart TD
 | SAM Adapter | セッション管理、テキストプロンプト、前向きの伝播と逆向きの補完、出力の正規化 | `models/sam31_segmenter.py`、`models/sam3_compat.py` | PyTorch、sam3 |
 | チャンク分割 | 長い動画を重なり付きで分割し、IoU とハンガリアン法で物体 ID をつなぐ | `models/chunking.py` | NumPy、SciPy |
 | Model Registry | 重みの解決（revision 固定）、GPU に 1 モデルだけ保持、解放 | `models/checkpoint.py`、`models/registry.py`、`models/factory.py` | huggingface_hub |
-| Point Cloud / Scene | 3DGS PLY・点群 PLY・COLMAP の読み込み、点群 → 等方 Gaussian | `spatial/gaussians.py`、`spatial/pointcloud.py`、`spatial/colmap.py`、`spatial/scene_source.py` | plyfile、SciPy |
+| Point Cloud / Scene | 3DGS PLY・点群（PLY / PCD / XYZ）・COLMAP の読み込み、点群の前処理（外れ値除去・ボクセル間引き）、点群 → 等方 Gaussian、対象の点群の書き出し | `spatial/gaussians.py`、`spatial/point_io.py`、`spatial/pointcloud.py`、`spatial/colmap.py`、`spatial/scene_source.py` | Open3D（点群）、plyfile（3DGS PLY）、SciPy（kNN） |
 | 3DGS Pipeline | 描画（RGB / 期待深度 / α / 特徴量）、カメラと軌道、学習 | `spatial/renderer.py`、`spatial/camera.py`、`spatial/trajectory.py`、`training/` | gsplat（JIT ビルド） |
 | Mask Lifting | 逆投影、Gaussian 中心の投影と可視判定、多視点投票、強調・抽出 | `spatial/mask_lifting.py`、`spatial/scene_highlight.py`、`pipeline/lifting.py` | NumPy |
 | Evaluation | IoU / Dice / 輪郭 F / J&F、PSNR / SSIM / LPIPS、再投影 IoU / 3D IoU | `evaluation/` | NumPy、PyTorch、lpips |
@@ -230,7 +230,7 @@ Gaussian 単位のラベルは、点を融合するのではなく、**Gaussian 
 
 | 機能 | 状況 |
 |---|---|
-| 3DGS PLY・点群 PLY・COLMAP のインポート | ✅（PCD・RGB-D は未対応） |
+| 3DGS PLY・点群（PLY / PCD / XYZ）・COLMAP のインポート、点群の前処理 | ✅（Open3D、#43。RGB-D は未対応） |
 | カメラ軌道（オービット・撮影カメラ）、RGB / 深度 / 姿勢付きフレーム、MP4 化 | ✅ |
 | 生成動画を Phase 1 に投入 | ✅（Video Segmentation へ受け渡す） |
 | 3DGS の学習（gsplat、MCMC、別プロセス） | ✅（設計では「必要に応じて」としていたが実装した） |
@@ -389,7 +389,7 @@ gaussian-sam-studio/
 1. **他のシーンでの汎化の確認**: Mip-NeRF 360 の garden、counter など。
 2. **追跡の評価**: ID 付きの GT で IDF1 / ID Switch を測る。
 3. **3D の正解ラベルでの評価**: 3D IoU の数値を正解に対して出す。
-4. **未対応の入力**: RGB-D、PCD、単眼深度による持ち上げ。
+4. **未対応の入力**: RGB-D、単眼深度による持ち上げ。
 5. **インタラクティブな 3D プレビュー**: three.js などのビューア。
 6. **ロボット作業空間（SO-101）での検証**: グリッパ・対象物体・作業台。
 
@@ -400,7 +400,7 @@ gaussian-sam-studio/
 | PyTorch + CUDA 12.8（SAM 3.1 の公式要件） | PyTorch 2.10 **cu130** | gsplat の JIT ビルドに使う pip 版 nvcc は、CUDA 13 系にしか nvcc 本体が無い。SAM 3.1 の結果は cu128 と同一だった |
 | VRAM の見積もり（bf16 で重み約 1.8GB） | 実測で最適化（バッチ 1、backbone だけ bf16、CPU オフロード） | 全体を bf16 にすると decoder で型が合わず失敗した。公式のバッチ 16 は OOM した |
 | 代替モデルへの切り替え（SAM 3 → Grounding DINO + SAM 2.1） | 実装しない | SAM 3.1 が 8GB に収まった |
-| Point Cloud は Open3D | plyfile + SciPy（kNN） | 必要なのは PLY の読み込みと近傍距離だけで、依存を増やさないため |
+| Point Cloud は Open3D | 点群の読み書きと前処理は Open3D（#43）。3DGS の PLY は plyfile、近傍距離は SciPy | Open3D は 3DGS の属性（SH・不透明度など）を持つ PLY を扱えない。外れ値除去は bonsai の点群描画の画質を上げなかった（PSNR 10.49 → 10.46。外れ値は Gaussian の大きさの中央値での頭打ちで既に抑えている） |
 | Experiment Store は MLflow など | ローカルの JSON / CSV / NPZ（`experiments/`） | オフライン・ローカルで完結させ、画面から直接読むため |
 | 評価は TorchMetrics など | 自前実装（NumPy / PyTorch）と lpips | 定義（和集合、輪郭の許容距離など）を明示して管理するため |
 | 2D→3D は逆投影して点を融合 | Gaussian の中心を投影し、可視性つきで投票（逆投影も実装） | 3DGS の Gaussian に直接ラベルを付け、遮蔽を扱えるため |

@@ -10,6 +10,12 @@ from spatialsam.spatial.gaussians import GaussianScene
 from spatialsam.spatial.pointcloud import SH_C0
 
 
+def scene_points(scene: GaussianScene) -> tuple[np.ndarray, np.ndarray]:
+    """Gaussian の中心と、DC 成分から求めた色（uint8）。点群として書き出すため。"""
+    colors = np.clip(scene.sh[:, 0] * SH_C0 + 0.5, 0.0, 1.0)
+    return scene.means, (colors * 255 + 0.5).astype(np.uint8)
+
+
 def subset_scene(scene: GaussianScene, keep: np.ndarray) -> GaussianScene:
     return GaussianScene(scene.means[keep], scene.quats[keep], scene.log_scales[keep],
                          scene.opacity_logits[keep], scene.sh[keep])

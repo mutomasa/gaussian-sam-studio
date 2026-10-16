@@ -249,7 +249,18 @@ docker compose -f docker/mlflow/compose.yaml up -d    # 起動 → http://127.0.
 docker compose -f docker/mlflow/compose.yaml down     # 停止（記録は Docker ボリューム spatialsam-mlflow に残る）
 ```
 
-- サーバーは `127.0.0.1` だけで待ち受けます。データは外に出ません。
+- 既定では、サーバーはこのマシン（`127.0.0.1`）だけで待ち受けます。データは外に出ません。
+- **LAN の別の PC から見る場合**（SSH で接続している PC のブラウザなど）は、LAN のアドレスでも待ち受ける追加設定を重ねます。
+
+  ```bash
+  cp docker/mlflow/.env.example docker/mlflow/.env    # 中のダミーの IP（192.0.2.10）を、このマシンの LAN の IP に書き換える（3 か所）
+  docker compose -f docker/mlflow/compose.yaml -f docker/mlflow/compose.lan.yaml up -d
+  # → 別の PC から http://<LAN の IP>:5000
+  ```
+
+  - 待ち受けるのは指定した LAN のアドレスだけです（`0.0.0.0` にはしないので、グローバル IPv6 や VPN のアドレスには出ません）。
+  - MLflow には認証が無く、同じ LAN の誰でも記録を閲覧・書き込みできます。信頼できるネットワークでだけ使ってください。
+  - 別の方法として、設定を変えずに SSH のポート転送（`ssh -L 5000:127.0.0.1:5000 <user>@<host>`）でも見られます。
 - MLflow 3.17.1 に固定しています（クライアントの `mlflow-skinny` と同じ版）。
 
 | MLflow の experiment | 1 つの run の中身 |

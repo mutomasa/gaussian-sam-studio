@@ -1,0 +1,14 @@
+# MLflow を LAN の別の PC からも見られるようにする追加設定 #47
+#
+#   cp docker/mlflow/.env.example docker/mlflow/.env   # MLFLOW_LAN_ADDRESS をこのマシンの LAN の IP にする
+#   docker compose -f docker/mlflow/compose.yaml -f docker/mlflow/compose.lan.yaml up -d
+#   → 別の PC のブラウザで http://<MLFLOW_LAN_ADDRESS>:5000
+#
+# - 0.0.0.0 ではなく LAN のアドレスだけで待ち受ける（グローバル IPv6 や VPN のアドレスには出さない）
+# - 127.0.0.1 の待ち受けも残るので、このマシンのアプリからの記録はそのまま動く
+# - .env の MLFLOW_EXTRA_ALLOWED_HOSTS（Host ヘッダー）と MLFLOW_EXTRA_CORS_ORIGINS（ブラウザの Origin）も必要
+# - MLflow には認証が無い。同じ LAN の誰でも閲覧・書き込みできるので、信頼できるネットワークでだけ使う
+services:
+  mlflow:
+    ports:
+      - "${MLFLOW_LAN_ADDRESS:?docker/mlflow/.env に MLFLOW_LAN_ADDRESS を書いてください}:5000:5000"

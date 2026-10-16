@@ -3,7 +3,8 @@
 #   docker compose -f docker/mlflow/compose.yaml up -d     # 起動（http://127.0.0.1:5000）
 #   docker compose -f docker/mlflow/compose.yaml down      # 停止（記録はボリュームに残る）
 #
-# - ローカルだけで待ち受ける（127.0.0.1）。データを外部に送らない方針のため
+# - 既定はこのマシンだけで待ち受ける（127.0.0.1）。データを外部に送らない方針のため
+# - LAN の別の PC から見るときは compose.lan.yaml を重ねる（手順はそのファイルの先頭）
 # - 記録（SQLite）と成果物は名前付きボリューム spatialsam-mlflow に置く
 # - クライアント（mlflow-skinny）と同じ 3.17.1 に固定する
 services:
@@ -16,7 +17,8 @@ services:
       --backend-store-uri sqlite:////mlflow/mlflow.db
       --artifacts-destination /mlflow/artifacts
       --serve-artifacts
-      --allowed-hosts "localhost:*,127.0.0.1:*"
+      --allowed-hosts "localhost:*,127.0.0.1:*${MLFLOW_EXTRA_ALLOWED_HOSTS:-}"
+      --cors-allowed-origins "http://localhost:5000,http://127.0.0.1:5000${MLFLOW_EXTRA_CORS_ORIGINS:-}"
     ports:
       - "127.0.0.1:5000:5000"
     volumes:

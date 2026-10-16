@@ -22,3 +22,6 @@ samples/*
 
 # Claude Code のサブエージェント用 worktree
 .claude/worktrees/
+
+# MLflow の LAN 公開の設定（マシンごとの IP を書く）
+docker/mlflow/.env
